@@ -76,8 +76,8 @@ describe('Read and write properties our our own profile', () => {
   })
 
   test('Birthday and Gender', async() => {
-    const birthday = "1900-01-01"
-    const gender = "Male"
+    const birthday = '1900-01-01'
+    const gender = 'Male'
     const {client, userId} = await loginCache.getCleanLogin()
 
     let resp = await client.query({query: queries.user, variables: {userId}})
