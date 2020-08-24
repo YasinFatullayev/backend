@@ -50,6 +50,8 @@ def test_create_cognito_user(user_manager, cognito_client):
     username = 'myusername'
     full_name = 'my-full-name'
     email = f'{username}@real.app'
+    birthday = '1900-01-01'
+    gender = 'Man'
 
     # check the user doesn't already exist
     user = user_manager.get_user(user_id)
@@ -65,6 +67,8 @@ def test_create_cognito_user(user_manager, cognito_client):
     assert user.item['username'] == username
     assert user.item['fullName'] == full_name
     assert user.item['email'] == email
+    assert user.item['birthday'] == birthday
+    assert user.item['gender'] == gender
     assert 'phoneNumber' not in user.item
 
     # double check user got into db
@@ -74,6 +78,8 @@ def test_create_cognito_user(user_manager, cognito_client):
     assert user.item['username'] == username
     assert user.item['fullName'] == full_name
     assert user.item['email'] == email
+    assert user.item['birthday'] == birthday
+    assert user.item['gender'] == gender
     assert 'phoneNumber' not in user.item
 
     # check cognito was set correctly

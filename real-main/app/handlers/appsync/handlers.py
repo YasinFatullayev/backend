@@ -82,8 +82,10 @@ def validate_caller(func):
 def create_cognito_only_user(caller_user_id, arguments, source, context):
     username = arguments['username']
     full_name = arguments.get('fullName')
+    birthday = arguments.get('birthday')
+    gender = arguments.get('gender')
     try:
-        user = user_manager.create_cognito_only_user(caller_user_id, username, full_name=full_name)
+        user = user_manager.create_cognito_only_user(caller_user_id, username, full_name=full_name, birthday=birthday, gender=gender)
     except UserException as err:
         raise ClientException(str(err))
     return user.serialize(caller_user_id)
@@ -179,6 +181,8 @@ def set_user_details(caller_user, arguments, source, context):
     likes_disabled = arguments.get('likesDisabled')
     sharing_disabled = arguments.get('sharingDisabled')
     verification_hidden = arguments.get('verificationHidden')
+    birthday = arguments.get('birthday')
+    gender = arguments.get('gender')
 
     args = (
         username,
@@ -194,6 +198,8 @@ def set_user_details(caller_user, arguments, source, context):
         sharing_disabled,
         verification_hidden,
         view_counts_hidden,
+        birthday,
+        gender
     )
     if all(v is None for v in args):
         raise ClientException('Called without any arguments... probably not what you intended?')
@@ -229,6 +235,8 @@ def set_user_details(caller_user, arguments, source, context):
         likes_disabled=likes_disabled,
         sharing_disabled=sharing_disabled,
         verification_hidden=verification_hidden,
+        birthday=birthday,
+        gender=gender
     )
     return caller_user.serialize(caller_user.id)
 

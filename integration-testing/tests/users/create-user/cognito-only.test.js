@@ -180,5 +180,22 @@ describe('cognito-only user', () => {
         /ClientError: .* already exists/,
       )
     })
+
+    test('Calling Mutation.createCognitoOnlyUser with user that handles birthday and gender', async () => {
+      const username = cognito.generateUsername()
+      const fullName = 'Yasin Fatullayev'
+      const birthday = '1900-01-01'
+      const gender = 'Man'
+      let variables = {username, fullName, birthday, gender}
+      let resp = await client.mutate({mutation: mutations.createCognitoOnlyUser, variables})
+
+      expect(resp['errors']).toBeUndefined()
+      expect(resp['data']['createCognitoOnlyUser']['userId']).toBe(userId)
+      expect(resp['data']['createCognitoOnlyUser']['username']).toBe(username)
+      expect(resp['data']['createCognitoOnlyUser']['email']).toBe(email)
+      expect(resp['data']['createCognitoOnlyUser']['fullName']).toBe(fullName)
+      expect(resp['data']['createCognitoOnlyUser']['birthday']).toBe(birthday)
+      expect(resp['data']['createCognitoOnlyUser']['gender']).toBe(gender)
+    })
   })
 })

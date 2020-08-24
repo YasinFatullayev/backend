@@ -37,7 +37,7 @@ class UserDynamo:
         return self.client.delete_item(self.pk(user_id))
 
     def add_user(
-        self, user_id, username, full_name=None, email=None, phone=None, placeholder_photo_code=None, now=None
+        self, user_id, username, full_name=None, email=None, phone=None, placeholder_photo_code=None, now=None, birthday=None, gender=None
     ):
         now = now or pendulum.now('utc')
         query_kwargs = {
@@ -61,6 +61,10 @@ class UserDynamo:
             query_kwargs['Item']['email'] = email
         if phone:
             query_kwargs['Item']['phoneNumber'] = phone
+        if birthday:
+            query_kwargs['Item']['birthday'] = birthday
+        if gender:
+            query_kwargs['Item']['gender'] = gender
         try:
             return self.client.add_item(query_kwargs)
         except self.client.exceptions.ConditionalCheckFailedException:
@@ -142,6 +146,8 @@ class UserDynamo:
         likes_disabled=None,
         sharing_disabled=None,
         verification_hidden=None,
+        birthday=None,
+        gender=None
     ):
         "To ignore an attribute, leave it set to None. To delete an attribute, set it to the empty string."
         expression_actions = collections.defaultdict(list)
@@ -167,6 +173,8 @@ class UserDynamo:
         process_attr('likesDisabled', likes_disabled)
         process_attr('sharingDisabled', sharing_disabled)
         process_attr('verificationHidden', verification_hidden)
+        process_attr('birthday', birthday)
+        process_attr('gender', gender)
 
         query_kwargs = {
             'Key': self.pk(user_id),

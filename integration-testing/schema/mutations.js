@@ -3,13 +3,15 @@ const gql = require('graphql-tag')
 const fragments = require('./fragments.js')
 
 module.exports.createCognitoOnlyUser = gql`
-  mutation CreateCognitoOnlyUser($username: String!, $fullName: String) {
-    createCognitoOnlyUser(username: $username, fullName: $fullName) {
+  mutation CreateCognitoOnlyUser($username: String!, $fullName: String, $birthday: String, $gender: String) {
+    createCognitoOnlyUser(username: $username, fullName: $fullName, birthday: $birthday, gender: $gender) {
       userId
       username
       fullName
       email
       phoneNumber
+      birthday
+      gender
       signedUpAt
     }
   }
@@ -104,8 +106,8 @@ module.exports.setUserViewCountsHidden = gql`
 `
 
 module.exports.setUserDetails = gql`
-  mutation SetUserDetails($bio: String, $fullName: String, $photoPostId: ID, $username: String) {
-    setUserDetails(bio: $bio, fullName: $fullName, photoPostId: $photoPostId, username: $username) {
+  mutation SetUserDetails($bio: String, $fullName: String, $photoPostId: ID, $username: String, $birthday: String, $gender: String) {
+    setUserDetails(bio: $bio, fullName: $fullName, photoPostId: $photoPostId, username: $username, birthday: $birthday, gender: $gender) {
       userId
       username
       bio
@@ -113,6 +115,8 @@ module.exports.setUserDetails = gql`
       photo {
         ...ImageFragment
       }
+      birthday
+      gender
     }
   }
   ${fragments.image}

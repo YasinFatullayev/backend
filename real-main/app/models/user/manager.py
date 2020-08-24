@@ -94,7 +94,7 @@ class UserManager(TrendingManagerMixin, ManagerBase):
         }
         return User(user_item, self.clients, **kwargs) if user_item else None
 
-    def create_cognito_only_user(self, user_id, username, full_name=None):
+    def create_cognito_only_user(self, user_id, username, full_name=None, birthday=None, gender=None):
         # try to claim the new username, will raise an validation exception if already taken
         self.validate.username(username)
         full_name = None if full_name == '' else full_name  # treat empty string like null
@@ -120,7 +120,7 @@ class UserManager(TrendingManagerMixin, ManagerBase):
 
         # create new user in the DB, have them follow the real user if they exist
         try:
-            item = self.dynamo.add_user(user_id, username, full_name=full_name, email=email, phone=phone,)
+            item = self.dynamo.add_user(user_id, username, full_name=full_name, email=email, phone=phone, birthday=birthday, gender=gender)
         except UserAlreadyExists:
             # un-claim the username in cognito
             if preferred_username:

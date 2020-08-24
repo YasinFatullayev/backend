@@ -74,6 +74,34 @@ describe('Read and write properties our our own profile', () => {
     expect(resp.data.user.bio).toBeNull()
     expect(resp.data.user.fullName).toBeNull()
   })
+
+  test('Birthday and Gender', async() => {
+    const birthday = "1900-01-01"
+    const gender = "Male"
+    const {client, userId} = await loginCache.getCleanLogin()
+
+    let resp = await client.query({query: queries.user, variables: {userId}})
+
+    // Set values to current User
+    resp = await client.mutate({mutation: mutations.setUserDetails, variables: {birthday, gender}})
+    expect(resp.data.setUserDetails.birthday).toBe(birthday)
+    expect(resp.data.setUserDetails.gender).toBe(gender)
+
+    resp = await client.query({query: queries.user, variables: {userId}})
+
+    expect(resp.data.user.birthday).toBe(birthday)
+    expect(resp.data.user.gender).toBe(gender)
+
+    // Clear out values
+    resp = await client.mutate({mutation: mutations.setUserDetails, variables: {birthday: '', gender: ''}})
+    expect(resp.data.setUserDetails.birthday).toBeNull()
+    expect(resp.data.setUserDetails.gender).toBeNull()
+
+    resp = await client.query({query: queries.user, variables: {userId}})
+
+    expect(resp.data.user.birthday).toBeNull()
+    expect(resp.data.user.gender).toBeNull()
+  })
 })
 
 test('Disabled user cannot setUserDetails', async () => {
