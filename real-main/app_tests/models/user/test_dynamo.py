@@ -244,7 +244,7 @@ def test_set_user_details(user_dynamo):
         sharing_disabled=True,
         verification_hidden=True,
         birthday='1900-01-01',
-        gender='Man',
+        gender='Male',
     )
     expected = {
         **expected_base_item,
@@ -262,7 +262,7 @@ def test_set_user_details(user_dynamo):
             'sharingDisabled': True,
             'verificationHidden': True,
             'birthday': '1900-01-01',
-            'gender': 'Man',
+            'gender': 'Male',
         },
     }
     assert resp == expected
