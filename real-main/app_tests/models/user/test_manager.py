@@ -61,7 +61,7 @@ def test_create_cognito_user(user_manager, cognito_client):
     cognito_client.create_verified_user_pool_entry(user_id, username, email)
 
     # create the user
-    user = user_manager.create_cognito_only_user(user_id, username, full_name=full_name)
+    user = user_manager.create_cognito_only_user(user_id, username, full_name=full_name, birthday=birthday, gender=gender)
     assert user.id == user_id
     assert user.item['userId'] == user_id
     assert user.item['username'] == username
