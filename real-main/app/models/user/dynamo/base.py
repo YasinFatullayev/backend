@@ -37,7 +37,16 @@ class UserDynamo:
         return self.client.delete_item(self.pk(user_id))
 
     def add_user(
-        self, user_id, username, full_name=None, email=None, phone=None, placeholder_photo_code=None, now=None, birthday=None, gender=None
+        self,
+        user_id,
+        username,
+        full_name=None,
+        email=None,
+        phone=None,
+        placeholder_photo_code=None,
+        now=None,
+        birthday=None,
+        gender=None,
     ):
         now = now or pendulum.now('utc')
         query_kwargs = {
@@ -147,7 +156,7 @@ class UserDynamo:
         sharing_disabled=None,
         verification_hidden=None,
         birthday=None,
-        gender=None
+        gender=None,
     ):
         "To ignore an attribute, leave it set to None. To delete an attribute, set it to the empty string."
         expression_actions = collections.defaultdict(list)

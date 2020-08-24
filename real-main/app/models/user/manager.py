@@ -120,7 +120,9 @@ class UserManager(TrendingManagerMixin, ManagerBase):
 
         # create new user in the DB, have them follow the real user if they exist
         try:
-            item = self.dynamo.add_user(user_id, username, full_name=full_name, email=email, phone=phone, birthday=birthday, gender=gender)
+            item = self.dynamo.add_user(
+                user_id, username, full_name=full_name, email=email, phone=phone, birthday=birthday, gender=gender
+            )
         except UserAlreadyExists:
             # un-claim the username in cognito
             if preferred_username:

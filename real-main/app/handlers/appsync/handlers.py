@@ -85,7 +85,9 @@ def create_cognito_only_user(caller_user_id, arguments, source, context):
     birthday = arguments.get('birthday')
     gender = arguments.get('gender')
     try:
-        user = user_manager.create_cognito_only_user(caller_user_id, username, full_name=full_name, birthday=birthday, gender=gender)
+        user = user_manager.create_cognito_only_user(
+            caller_user_id, username, full_name=full_name, birthday=birthday, gender=gender
+        )
     except UserException as err:
         raise ClientException(str(err))
     return user.serialize(caller_user_id)
@@ -199,7 +201,7 @@ def set_user_details(caller_user, arguments, source, context):
         verification_hidden,
         view_counts_hidden,
         birthday,
-        gender
+        gender,
     )
     if all(v is None for v in args):
         raise ClientException('Called without any arguments... probably not what you intended?')
@@ -236,7 +238,7 @@ def set_user_details(caller_user, arguments, source, context):
         sharing_disabled=sharing_disabled,
         verification_hidden=verification_hidden,
         birthday=birthday,
-        gender=gender
+        gender=gender,
     )
     return caller_user.serialize(caller_user.id)
 
