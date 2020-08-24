@@ -77,20 +77,19 @@ describe('Read and write properties our our own profile', () => {
 
   test('Birthday and Gender', async () => {
     const birthday = '1900-01-01'
-    const gender = 'Male'
     const {client, userId} = await loginCache.getCleanLogin()
 
     let resp = await client.query({query: queries.user, variables: {userId}})
 
     // Set values to current User
-    resp = await client.mutate({mutation: mutations.setUserDetails, variables: {birthday, gender}})
+    resp = await client.mutate({mutation: mutations.setUserDetails, variables: {birthday, gender: 'MALE'}})
     expect(resp.data.setUserDetails.birthday).toBe(birthday)
-    expect(resp.data.setUserDetails.gender).toBe(gender)
+    expect(resp.data.setUserDetails.gender).toBe('MALE')
 
     // Clear out values
-    resp = await client.mutate({mutation: mutations.setUserDetails, variables: {birthday: '', gender: ''}})
+    resp = await client.mutate({mutation: mutations.setUserDetails, variables: {birthday: '', gender: 'FEMALE'}})
     expect(resp.data.setUserDetails.birthday).toBeNull()
-    expect(resp.data.setUserDetails.gender).toBeNull()
+    expect(resp.data.setUserDetails.gender).toBe('FEMALE')
   })
 })
 

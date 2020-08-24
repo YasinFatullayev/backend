@@ -19,3 +19,9 @@ class UserSubscriptionLevel:
 
     _ALL = (BASIC, DIAMOND)
     _PAID = (DIAMOND,)
+
+class UserGender:
+    MALE = 'MALE'
+    FEMALE = 'FEMALE'
+
+    _ALL = (MALE, FEMALE)

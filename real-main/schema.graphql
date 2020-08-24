@@ -64,7 +64,7 @@ type Query {
 
 type Mutation {
   # Set up a new user account
-  createCognitoOnlyUser(username: String!, fullName: String, birthday: String, gender: String): User
+  createCognitoOnlyUser(username: String!, fullName: String, birthday: String, gender: UserGender): User
   createAppleUser(username: String!, fullName: String, appleIdToken: String!): User
   createFacebookUser(username: String!, fullName: String, facebookAccessToken: String!): User
   createGoogleUser(username: String!, fullName: String, googleIdToken: String!): User
@@ -112,7 +112,7 @@ type Mutation {
     languageCode: String,
     themeCode: String,
     birthday: String,
-    gender: String
+    gender: UserGender
   ): User
 
   # Various one-off user property setters
@@ -573,6 +573,11 @@ input ChatMessageNotificationInput {
   # Stringified JSON of the author's serialized representation
   #   - null for system messages or when caller has blocking relationship with author
   authorEncoded : String
+}
+
+enum UserGender {
+  MALE
+  FEMALE
 }
 
 enum UserStatus {

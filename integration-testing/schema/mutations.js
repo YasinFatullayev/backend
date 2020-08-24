@@ -3,7 +3,7 @@ const gql = require('graphql-tag')
 const fragments = require('./fragments.js')
 
 module.exports.createCognitoOnlyUser = gql`
-  mutation CreateCognitoOnlyUser($username: String!, $fullName: String, $birthday: String, $gender: String) {
+  mutation CreateCognitoOnlyUser($username: String!, $fullName: String, $birthday: String, $gender: UserGender) {
     createCognitoOnlyUser(username: $username, fullName: $fullName, birthday: $birthday, gender: $gender) {
       userId
       username
@@ -112,7 +112,7 @@ module.exports.setUserDetails = gql`
     $photoPostId: ID
     $username: String
     $birthday: String
-    $gender: String
+    $gender: UserGender
   ) {
     setUserDetails(
       bio: $bio

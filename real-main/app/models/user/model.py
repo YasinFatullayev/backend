@@ -230,6 +230,14 @@ class User(TrendingModelMixin):
         self.item = self.dynamo.set_user_privacy_status(self.id, privacy_status)
         return self
 
+    def set_gender(self, gender):
+        old_gender = self.item.get('gender')
+        if gender == old_gender:
+            return self
+
+        self.item = self.dynamo.set_user_gender(self.id, gender)
+        return self
+
     def update_username(self, username):
         old_username = self.item['username']
         if old_username == username:

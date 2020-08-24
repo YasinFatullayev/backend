@@ -185,8 +185,7 @@ describe('cognito-only user', () => {
       const username = cognito.generateUsername()
       const fullName = 'Yasin Fatullayev'
       const birthday = '1900-01-01'
-      const gender = 'Male'
-      let variables = {username, fullName, birthday, gender}
+      let variables = {username, fullName, birthday, gender: 'MALE'}
       let resp = await client.mutate({mutation: mutations.createCognitoOnlyUser, variables})
 
       expect(resp.errors).toBeUndefined()
@@ -195,7 +194,7 @@ describe('cognito-only user', () => {
       expect(resp.data.createCognitoOnlyUser.email).toBe(email)
       expect(resp.data.createCognitoOnlyUser.fullName).toBe(fullName)
       expect(resp.data.createCognitoOnlyUser.birthday).toBe(birthday)
-      expect(resp.data.createCognitoOnlyUser.gender).toBe(gender)
+      expect(resp.data.createCognitoOnlyUser.gender).toBe('MALE')
     })
   })
 })

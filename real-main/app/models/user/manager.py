@@ -14,7 +14,7 @@ from app.utils import GqlNotificationType
 
 from .dynamo import UserContactAttributeDynamo, UserDynamo
 from .enums import UserStatus, UserSubscriptionLevel
-from .exceptions import UserAlreadyExists, UserValidationException
+from .exceptions import UserAlreadyExists, UserValidationException, UserException
 from .model import User
 from .validate import UserValidate
 
@@ -117,6 +117,13 @@ class UserManager(TrendingManagerMixin, ManagerBase):
             self.cognito_client.set_user_attributes(user_id, {'preferred_username': username.lower()})
         except self.cognito_client.user_pool_client.exceptions.AliasExistsException:
             raise UserValidationException(f'Username `{username}` already taken (case-insensitive comparison)')
+
+        # Set User Gender
+        # if gender is not None:
+        #     try:
+        #         self.dynamo.set_user_gender(user_id, gender)
+        #     except UserException as err:
+        #         raise UserException(str(err))
 
         # create new user in the DB, have them follow the real user if they exist
         try:
