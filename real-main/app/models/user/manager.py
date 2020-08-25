@@ -118,13 +118,6 @@ class UserManager(TrendingManagerMixin, ManagerBase):
         except self.cognito_client.user_pool_client.exceptions.AliasExistsException:
             raise UserValidationException(f'Username `{username}` already taken (case-insensitive comparison)')
 
-        # Set User Gender
-        # if gender is not None:
-        #     try:
-        #         self.dynamo.set_user_gender(user_id, gender)
-        #     except UserException as err:
-        #         raise UserException(str(err))
-
         # create new user in the DB, have them follow the real user if they exist
         try:
             item = self.dynamo.add_user(
