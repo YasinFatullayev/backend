@@ -64,7 +64,7 @@ type Query {
 
 type Mutation {
   # Set up a new user account
-  createCognitoOnlyUser(username: String!, fullName: String, birthday: String, gender: UserGender): User
+  createCognitoOnlyUser(username: String!, fullName: String, birthday: AWSDate, gender: UserGender): User
   createAppleUser(username: String!, fullName: String, appleIdToken: String!): User
   createFacebookUser(username: String!, fullName: String, facebookAccessToken: String!): User
   createGoogleUser(username: String!, fullName: String, googleIdToken: String!): User
@@ -111,7 +111,7 @@ type Mutation {
     verificationHidden: Boolean,
     languageCode: String,
     themeCode: String,
-    birthday: String,
+    birthday: AWSDate,
     gender: UserGender
   ): User
 

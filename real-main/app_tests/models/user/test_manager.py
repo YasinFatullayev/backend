@@ -50,7 +50,7 @@ def test_create_cognito_user(user_manager, cognito_client):
     username = 'myusername'
     full_name = 'my-full-name'
     email = f'{username}@real.app'
-    birthday = '1900-01-01'
+    birthday = pendulum.from_format('1900-01-01', 'YYYY-MM-DD').to_iso8601_string()
     gender = 'MALE'
 
     # check the user doesn't already exist

@@ -184,7 +184,7 @@ describe('cognito-only user', () => {
     test('Calling Mutation.createCognitoOnlyUser with user that handles birthday and gender', async () => {
       const username = cognito.generateUsername()
       const fullName = 'Yasin Fatullayev'
-      const birthday = '1900-01-01'
+      const birthday = moment('1900-01-01').format('YYYY-MM-DD')
       let variables = {username, fullName, birthday, gender: 'MALE'}
       let resp = await client.mutate({mutation: mutations.createCognitoOnlyUser, variables})
 

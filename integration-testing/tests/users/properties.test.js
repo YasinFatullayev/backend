@@ -1,4 +1,5 @@
 const fs = require('fs')
+const moment = require('moment')
 const path = require('path')
 const rp = require('request-promise-native')
 const uuidv4 = require('uuid/v4')
@@ -76,7 +77,7 @@ describe('Read and write properties our our own profile', () => {
   })
 
   test('Birthday and Gender', async () => {
-    const birthday = '1900-01-01'
+    const birthday = moment('1900-01-01').format('YYYY-MM-DD')
     const {client, userId} = await loginCache.getCleanLogin()
 
     let resp = await client.query({query: queries.user, variables: {userId}})
@@ -86,9 +87,9 @@ describe('Read and write properties our our own profile', () => {
     expect(resp.data.setUserDetails.birthday).toBe(birthday)
     expect(resp.data.setUserDetails.gender).toBe('MALE')
 
-    // Clear out values
-    resp = await client.mutate({mutation: mutations.setUserDetails, variables: {birthday: '', gender: 'FEMALE'}})
-    expect(resp.data.setUserDetails.birthday).toBeNull()
+    // Set another values to current User
+    resp = await client.mutate({mutation: mutations.setUserDetails, variables: {birthday, gender: 'FEMALE'}})
+    expect(resp.data.setUserDetails.birthday).toBe(birthday)
     expect(resp.data.setUserDetails.gender).toBe('FEMALE')
   })
 })
