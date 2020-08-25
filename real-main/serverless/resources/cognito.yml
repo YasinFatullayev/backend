@@ -125,9 +125,9 @@ Resources:
       AutoVerifiedAttributes:
         - email
         - phone_number
-      # EmailConfiguration:
-      #   EmailSendingAccount: DEVELOPER
-      #   SourceArn: ${self:custom.sesSender.arn}
+      EmailConfiguration:
+        EmailSendingAccount: DEVELOPER
+        SourceArn: ${self:custom.sesSender.arn}
       Policies:
         PasswordPolicy:
           MinimumLength: 8
