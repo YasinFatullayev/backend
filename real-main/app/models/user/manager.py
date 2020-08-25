@@ -14,7 +14,7 @@ from app.utils import GqlNotificationType
 
 from .dynamo import UserContactAttributeDynamo, UserDynamo
 from .enums import UserStatus, UserSubscriptionLevel
-from .exceptions import UserAlreadyExists, UserValidationException, UserException
+from .exceptions import UserAlreadyExists, UserException, UserValidationException
 from .model import User
 from .validate import UserValidate
 

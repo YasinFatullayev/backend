@@ -5,7 +5,7 @@ import pendulum
 import pytest
 
 from app.models.user.dynamo import UserDynamo
-from app.models.user.enums import UserPrivacyStatus, UserStatus, UserSubscriptionLevel, UserGender
+from app.models.user.enums import UserGender, UserPrivacyStatus, UserStatus, UserSubscriptionLevel
 from app.models.user.exceptions import UserAlreadyExists, UserAlreadyGrantedSubscription
 
 

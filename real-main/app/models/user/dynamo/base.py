@@ -4,7 +4,7 @@ import logging
 import pendulum
 from boto3.dynamodb.conditions import Key
 
-from ..enums import UserPrivacyStatus, UserStatus, UserSubscriptionLevel, UserGender
+from ..enums import UserGender, UserPrivacyStatus, UserStatus, UserSubscriptionLevel
 from ..exceptions import UserAlreadyExists, UserAlreadyGrantedSubscription
 
 logger = logging.getLogger()
