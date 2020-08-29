@@ -64,7 +64,7 @@ type Query {
 
 type Mutation {
   # Set up a new user account
-  createCognitoOnlyUser(username: String!, fullName: String): User
+  createCognitoOnlyUser(username: String!, fullName: String, birthday: AWSDate, gender: UserGender): User
   createAppleUser(username: String!, fullName: String, appleIdToken: String!): User
   createFacebookUser(username: String!, fullName: String, facebookAccessToken: String!): User
   createGoogleUser(username: String!, fullName: String, googleIdToken: String!): User
@@ -110,7 +110,9 @@ type Mutation {
     sharingDisabled: Boolean,
     verificationHidden: Boolean,
     languageCode: String,
-    themeCode: String
+    themeCode: String,
+    birthday: AWSDate,
+    gender: UserGender
   ): User
 
   # Various one-off user property setters
@@ -326,11 +328,18 @@ input NotificationInput {
   userChatsWithUnviewedMessagesCount: Int
 }
 
+enum UserGender {
+  MALE
+  FEMALE
+}
+
 type User {
 
   # public info readable by all logged-in users, including blocked users
   userId: ID!
   username: String!
+  birthday: AWSDate
+  gender: UserGender
 
   # public info, readable by all logged-in non-blocked users
   userStatus: UserStatus

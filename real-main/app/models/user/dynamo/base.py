@@ -4,7 +4,7 @@ import logging
 import pendulum
 from boto3.dynamodb.conditions import Key
 
-from ..enums import UserPrivacyStatus, UserStatus, UserSubscriptionLevel
+from ..enums import UserGender, UserPrivacyStatus, UserStatus, UserSubscriptionLevel
 from ..exceptions import UserAlreadyExists, UserAlreadyGrantedSubscription
 
 logger = logging.getLogger()
@@ -37,7 +37,16 @@ class UserDynamo:
         return self.client.delete_item(self.pk(user_id))
 
     def add_user(
-        self, user_id, username, full_name=None, email=None, phone=None, placeholder_photo_code=None, now=None
+        self,
+        user_id,
+        username,
+        full_name=None,
+        email=None,
+        phone=None,
+        placeholder_photo_code=None,
+        now=None,
+        birthday=None,
+        gender=None,
     ):
         now = now or pendulum.now('utc')
         query_kwargs = {
@@ -61,6 +70,10 @@ class UserDynamo:
             query_kwargs['Item']['email'] = email
         if phone:
             query_kwargs['Item']['phoneNumber'] = phone
+        if birthday:
+            query_kwargs['Item']['birthday'] = birthday
+        if gender:
+            query_kwargs['Item']['gender'] = gender
         try:
             return self.client.add_item(query_kwargs)
         except self.client.exceptions.ConditionalCheckFailedException as err:
@@ -127,6 +140,15 @@ class UserDynamo:
         }
         return self.client.update_item(query_kwargs)
 
+    def set_user_gender(self, user_id, gender):
+        assert gender in UserGender._ALL, f'Invalid gender `{gender}`'
+        query_kwargs = {
+            'Key': self.pk(user_id),
+            'UpdateExpression': 'SET gender = :ps',
+            'ExpressionAttributeValues': {':ps': gender},
+        }
+        return self.client.update_item(query_kwargs)
+
     def set_user_details(
         self,
         user_id,
@@ -142,6 +164,7 @@ class UserDynamo:
         likes_disabled=None,
         sharing_disabled=None,
         verification_hidden=None,
+        birthday=None
     ):
         "To ignore an attribute, leave it set to None. To delete an attribute, set it to the empty string."
         expression_actions = collections.defaultdict(list)
@@ -167,6 +190,7 @@ class UserDynamo:
         process_attr('likesDisabled', likes_disabled)
         process_attr('sharingDisabled', sharing_disabled)
         process_attr('verificationHidden', verification_hidden)
+        process_attr('birthday', birthday)
 
         query_kwargs = {
             'Key': self.pk(user_id),

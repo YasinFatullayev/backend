@@ -240,6 +240,14 @@ class User(TrendingModelMixin):
         self.item = self.dynamo.set_user_privacy_status(self.id, privacy_status)
         return self
 
+    def set_gender(self, gender):
+        old_gender = self.item.get('gender')
+        if gender == old_gender:
+            return self
+
+        self.item = self.dynamo.set_user_gender(self.id, gender)
+        return self
+
     def update_username(self, username):
         old_username = self.item['username']
         if old_username == username:
@@ -305,6 +313,8 @@ class User(TrendingModelMixin):
         likes_disabled=None,
         sharing_disabled=None,
         verification_hidden=None,
+        birthday=None,
+        gender=None,
     ):
         "To delete details, set them to the empty string. Ex: `full_name=''`"
         kwargs = {k: v for k, v in locals().items() if k != 'self' and v is not None}

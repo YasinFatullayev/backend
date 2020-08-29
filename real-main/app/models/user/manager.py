@@ -107,7 +107,7 @@ class UserManager(TrendingManagerMixin, ManagerBase):
         codes = self.get_available_placeholder_photo_codes()
         return random.choice(codes) if codes else None
 
-    def create_cognito_only_user(self, user_id, username, full_name=None):
+    def create_cognito_only_user(self, user_id, username, full_name=None, birthday=None, gender=None):
         # try to claim the new username, will raise an validation exception if already taken
         self.validate.username(username)
         full_name = None if full_name == '' else full_name  # treat empty string like null
@@ -143,6 +143,8 @@ class UserManager(TrendingManagerMixin, ManagerBase):
                 email=email,
                 phone=phone,
                 placeholder_photo_code=photo_code,
+                birthday=birthday,
+                gender=gender
             )
         except UserAlreadyExists:
             # un-claim the username in cognito
