@@ -164,50 +164,23 @@ class User(TrendingModelMixin):
             raise Exception(f'Unrecognized user status `{self.status}`')
         return self
 
-    def delete(self, skip_cognito=False):
+    def reset(self):
+        # the user's last status is used by post-delete dynamo stream handler
+        if self.status != UserStatus.RESETTING:
+            self.item = self.dynamo.set_user_status(self.id, UserStatus.RESETTING)
+        self.dynamo.delete_user(self.id)
+        # release the user's username from cognito
+        try:
+            self.cognito_client.clear_user_attribute(self.id, 'preferred_username')
+        except self.cognito_client.user_pool_client.exceptions.UserNotFoundException:
+            logger.warning(f'No cognito user pool entry found when resetting user `{self.id}`')
+        return self
+
+    def delete(self):
+        # the user's last status is used by post-delete dynamo stream handler
         if self.status != UserStatus.DELETING:
             self.item = self.dynamo.set_user_status(self.id, UserStatus.DELETING)
-
-        # for REQUESTED and DENIED, just delete them
-        # for FOLLOWING, unfollow so that the other user's counts remain correct
-        self.follower_manager.reset_followed_items(self.id)
-        self.follower_manager.reset_follower_items(self.id)
-
-        # unflag everything we've flagged
-        self.post_manager.unflag_all_by_user(self.id)
-        self.comment_manager.unflag_all_by_user(self.id)
-
-        # delete all our likes & comments & albums & posts
-        self.like_manager.dislike_all_by_user(self.id)
-        self.comment_manager.delete_all_by_user(self.id)
-        self.album_manager.delete_all_by_user(self.id)
-        self.post_manager.delete_all_by_user(self.id)
-
-        # remove all blocks of and by us
-        self.block_manager.unblock_all_blocks(self.id)
-
-        # leave all chats we are part of (auto-deletes direct & solo chats)
-        self.chat_manager.leave_all_chats(self.id)
-
-        # remove our trending item, if it's there
-        self.trending_delete()
-
-        # delete current and old profile photos
-        self.clear_photo_s3_objects()
-
-        # delete our own profile. Leave our stale item around so we can serialize
         self.dynamo.delete_user(self.id)
-
-        if skip_cognito:
-            # release our preferred_username from cognito
-            try:
-                self.cognito_client.clear_user_attribute(self.id, 'preferred_username')
-            except self.cognito_client.user_pool_client.exceptions.UserNotFoundException:
-                logger.warning(f'No cognito user pool entry found when deleting user `{self.id}`')
-        else:
-            self.cognito_client.delete_user_pool_entry(self.id)
-            self.cognito_client.delete_identity_pool_entry(self.id)
-
         return self
 
     def set_accepted_eula_version(self, version):
@@ -246,6 +219,10 @@ class User(TrendingModelMixin):
             return self
 
         self.item = self.dynamo.set_user_gender(self.id, gender)
+
+    def set_last_client(self, client):
+        if self.item.get('lastClient') != client:
+            self.item = self.dynamo.set_last_client(self.id, client)
         return self
 
     def update_username(self, username):

@@ -460,6 +460,34 @@ def test_set_user_gender(user_dynamo):
     assert user_item['gender'] == UserGender.FEMALE
     
 
+def test_set_last_client(user_dynamo):
+    user_id = str(uuid4())
+
+    # create the user, verify user starts with no client info
+    user_item = user_dynamo.add_user(user_id, 'my-username')
+    assert user_item['userId'] == user_id
+    assert 'lastClient' not in user_item
+
+    # set some client info, verify
+    client_1 = {
+        'version': 'v2001',
+        'system': 'one device to rule them all',
+    }
+    user_item = user_dynamo.set_last_client(user_id, client_1)
+    assert user_dynamo.get_user(user_id) == user_item
+    assert user_item['lastClient'] == client_1
+
+    # update to some new client info, verify
+    client_2 = {
+        'system': 'and in the darkness use my camera flash to disable them',
+        'version': 'v2022',
+        'some-other-useful-data': 42,
+    }
+    user_item = user_dynamo.set_last_client(user_id, client_2)
+    assert user_dynamo.get_user(user_id) == user_item
+    assert user_item['lastClient'] == client_2
+
+
 @pytest.mark.parametrize(
     'incrementor_name, decrementor_name, attribute_name',
     [
@@ -484,9 +512,11 @@ def test_set_user_gender(user_dynamo):
         ['increment_post_archived_count', 'decrement_post_archived_count', 'postArchivedCount'],
         ['increment_post_forced_archiving_count', None, 'postForcedArchivingCount'],
         ['increment_post_deleted_count', None, 'postDeletedCount'],
-        ['increment_post_viewed_by_count', None, 'postViewedByCount'],
+        ['increment_post_viewed_by_count', 'decrement_post_viewed_by_count', 'postViewedByCount'],
     ],
 )
+
+
 def test_increment_decrement_count(user_dynamo, caplog, incrementor_name, decrementor_name, attribute_name):
     incrementor = getattr(user_dynamo, incrementor_name)
     decrementor = getattr(user_dynamo, decrementor_name) if decrementor_name else None
@@ -669,3 +699,51 @@ def test_update_last_post_view_at(user_dynamo, caplog):
     assert len(caplog.records) == 1
     assert caplog.records[0].levelname == 'WARNING'
     assert all(x in caplog.records[0].msg for x in ['Failed to update lastPostViewAt', user_id_2])
+
+
+def test_add_delete_user_deleted(user_dynamo, caplog):
+    # verify starting state
+    user_id = str(uuid4())
+    key = {'partitionKey': f'user/{user_id}', 'sortKey': 'deleted'}
+    assert user_dynamo.client.get_item(key) is None
+
+    # add the item, verify
+    before = pendulum.now('utc')
+    user_deleted_item = user_dynamo.add_user_deleted(user_id)
+    after = pendulum.now('utc')
+    assert user_dynamo.client.get_item(key) == user_deleted_item
+    deleted_at = pendulum.parse(user_deleted_item['deletedAt'])
+    assert user_deleted_item == {
+        'partitionKey': f'user/{user_id}',
+        'sortKey': 'deleted',
+        'schemaVersion': 0,
+        'userId': user_id,
+        'deletedAt': deleted_at.to_iso8601_string(),
+        'gsiA1PartitionKey': 'userDeleted',
+        'gsiA1SortKey': deleted_at.to_iso8601_string(),
+    }
+    assert deleted_at >= before
+    assert deleted_at <= after
+
+    # verify can't add same subitem a second time
+    with caplog.at_level(logging.WARNING):
+        new_item = user_dynamo.add_user_deleted(user_id)
+    assert new_item is None
+    assert len(caplog.records) == 1
+    assert caplog.records[0].levelname == 'WARNING'
+    assert all(x in caplog.records[0].msg for x in ['Failed to add UserDeleted subitem', user_id])
+
+    # delete the subitem
+    new_item = user_dynamo.delete_user_deleted(user_id)
+    assert new_item == user_deleted_item
+    assert user_dynamo.client.get_item(key) is None
+
+    # verify deletes are idempotent
+    new_item = user_dynamo.delete_user_deleted(user_id)
+    assert new_item is None
+    assert user_dynamo.client.get_item(key) is None
+
+    # verify we can now re-add the subitem
+    new_item = user_dynamo.add_user_deleted(user_id, now=deleted_at)
+    assert user_dynamo.client.get_item(key) == new_item
+    assert new_item == user_deleted_item

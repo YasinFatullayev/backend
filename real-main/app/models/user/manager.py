@@ -262,9 +262,19 @@ class UserManager(TrendingManagerMixin, ManagerBase):
         card = self.card_manager.init_card(old_item)
         self.dynamo.decrement_card_count(card.user_id)
 
+    def on_user_add_delete_user_deleted_subitem(self, user_id, new_item):
+        # the integration test suite reuses deleted users as a performance enhancement
+        self.dynamo.delete_user_deleted(user_id)
+
     def on_user_delete(self, user_id, old_item):
+        "Delete various user-related objects/items"
+        self.dynamo.add_user_deleted(user_id)
         self.elasticsearch_client.delete_user(user_id)
         self.pinpoint_client.delete_user_endpoints(user_id)
+
+        user = self.init_user(old_item)
+        user.clear_photo_s3_objects()
+        user.trending_delete()
 
     def sync_user_status_due_to(self, check_method_name, forced_by, user_id, new_item, old_item=None):
         user = self.init_user(new_item)
@@ -389,3 +399,15 @@ class UserManager(TrendingManagerMixin, ManagerBase):
     on_user_phone_number_change_update_subitem = partialmethod(
         on_user_contact_attribute_change_update_subitem, 'phoneNumber', 'phone_number_dynamo'
     )
+
+    def on_user_delete_delete_cognito(self, user_id, old_item):
+        old_status = old_item.get('userStatus', UserStatus.ACTIVE)
+        # for resets (used by the integration test suite) we leave the user in cognito
+        # as a performance enhancement.
+        if old_status != UserStatus.RESETTING:
+            try:
+                self.cognito_client.delete_user_pool_entry(user_id)
+            except self.cognito_client.user_pool_client.exceptions.UserNotFoundException:
+                logger.warning(f'No cognito user pool entry found when deleting user `{user_id}`')
+            # TODO: catch 404 error & log warning
+            self.cognito_client.delete_identity_pool_entry(user_id)

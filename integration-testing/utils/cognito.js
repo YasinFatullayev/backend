@@ -4,7 +4,10 @@
  */
 
 const AWS = require('aws-sdk')
-const AWSAppSyncClient = require('aws-appsync').default
+const {default: AWSAppSyncClient, createAppSyncLink} = require('aws-appsync')
+const {setContext} = require('apollo-link-context')
+const {ApolloLink} = require('apollo-link')
+const {createHttpLink} = require('apollo-link-http')
 const callerId = require('caller-id')
 const dotenv = require('dotenv')
 const jwtDecode = require('jwt-decode')
@@ -15,6 +18,7 @@ const uuidv4 = require('uuid/v4')
 require('isomorphic-fetch')
 
 const {mutations} = require('../schema')
+const misc = require('./misc')
 
 dotenv.config()
 AWS.config = new AWS.Config()
@@ -78,16 +82,30 @@ const generateRRUuid = (callerData) => {
 
 const getAppSyncClient = async (creds) => {
   const credentials = new AWS.Credentials(creds.AccessKeyId, creds.SecretKey, creds.SessionToken)
-  const client = new AWSAppSyncClient(
-    {
-      url: appsyncApiUrl,
-      region: AWS.config.region,
-      auth: {type: 'AWS_IAM', credentials},
-      disableOffline: true,
-    },
-    // https://www.apollographql.com/docs/react/api/react-apollo/#optionsfetchpolicy
-    {defaultOptions: {query: {fetchPolicy: 'network-only'}}},
-  )
+  const appSyncConfig = {
+    url: appsyncApiUrl,
+    region: AWS.config.region,
+    auth: {type: 'AWS_IAM', credentials},
+    disableOffline: true,
+  }
+  const appSyncOptions = {
+    defaultOptions: {query: {fetchPolicy: 'no-cache'}},
+    link: createAppSyncLink({
+      ...appSyncConfig,
+      resultsFetcherLink: ApolloLink.from([
+        setContext((request, previousContext) => ({
+          headers: {
+            ...previousContext.headers,
+            ['x-real-version']: '0.1.0',
+            ['x-real-device']: 'TestingClient',
+            ['x-real-system']: 'REAL Backend Integration Tests',
+          },
+        })),
+        createHttpLink({uri: appSyncConfig.url}),
+      ]),
+    }),
+  }
+  const client = new AWSAppSyncClient(appSyncConfig, appSyncOptions)
   await client.hydrated()
   return client
 }
@@ -188,14 +206,15 @@ class AppSyncLoginCache {
   }
 
   addCleanLogin(login) {
-    this.cleanLogins.push(login)
+    this.cleanLogins.push({login, timer: Promise.resolve()})
   }
 
   /* Return a clean login. If no clean logins are left, throws an exception. */
   async getCleanLogin() {
-    const login = this.cleanLogins.pop()
+    const {login, timer} = this.cleanLogins.pop()
     if (!login) throw new Error('No more clean logins left. Perhaps initialize more in beforeAll()?')
     this.dirtyLogins.push(login)
+    await timer // give post-user-reset dyanmo stream handlers time to run
     return login
   }
 
@@ -206,21 +225,15 @@ class AppSyncLoginCache {
       const {client, username} = login
       await client.clearStore()
       await client.mutate({mutation: mutations.resetUser, variables: {newUsername: username}})
-      this.cleanLogins.push(login)
+      this.cleanLogins.push({login, timer: misc.sleep(3000)})
       login = this.dirtyLogins.pop()
     }
   }
 
   async reset() {
     // purposefully avoiding parallelism here so we can run more test suites in parrellel
-    this.cleanLogins.forEach(({client}) => client.mutate({mutation: mutations.resetUser}))
-    let login = this.dirtyLogins.pop()
-    while (login) {
-      const {client} = login
-      await client.mutate({mutation: mutations.resetUser})
-      this.cleanLogins.push(login)
-      login = this.dirtyLogins.pop()
-    }
+    this.cleanLogins.forEach(({login: {client}}) => client.mutate({mutation: mutations.resetUser}))
+    this.dirtyLogins.forEach(({client}) => client.mutate({mutation: mutations.resetUser}))
   }
 }
 

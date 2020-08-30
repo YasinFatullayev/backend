@@ -5,6 +5,8 @@ from uuid import uuid4
 import pytest
 
 from app.models.post.enums import PostStatus, PostType
+from app.models.user.enums import UserStatus
+from app.utils import image_size
 
 
 @pytest.fixture
@@ -83,16 +85,63 @@ def test_on_comment_delete_adjusts_counts(user_manager, user, comment, caplog):
     assert new_item == org_item
 
 
+def test_on_user_add_delete_user_deleted_subitem(user_manager, user):
+    key = {'partitionKey': f'user/{user.id}', 'sortKey': 'deleted'}
+    # add a deleted subitem, verify
+    user_manager.dynamo.add_user_deleted(user.id)
+    assert user_manager.dynamo.client.get_item(key)
+
+    # run handler, verify
+    user_manager.on_user_add_delete_user_deleted_subitem(user.id, new_item=user.item)
+    assert user_manager.dynamo.client.get_item(key) is None
+
+    # run handler again, verify doesn't crash & idempotent
+    user_manager.on_user_add_delete_user_deleted_subitem(user.id, new_item=user.item)
+    assert user_manager.dynamo.client.get_item(key) is None
+
+
 def test_on_user_delete_calls_elasticsearch(user_manager, user):
     with patch.object(user_manager, 'elasticsearch_client') as elasticsearch_client_mock:
-        user_manager.on_user_delete(user.id, user.item)
+        user_manager.on_user_delete(user.id, old_item=user.item)
     assert elasticsearch_client_mock.mock_calls == [call.delete_user(user.id)]
 
 
 def test_on_user_delete_calls_pinpoint(user_manager, user):
     with patch.object(user_manager, 'pinpoint_client') as pinpoint_client_mock:
-        user_manager.on_user_delete(user.id, user.item)
+        user_manager.on_user_delete(user.id, old_item=user.item)
     assert pinpoint_client_mock.mock_calls == [call.delete_user_endpoints(user.id)]
+
+
+def test_on_user_delete_adds_user_deleted_subitem(user_manager, user):
+    key = {'partitionKey': f'user/{user.id}', 'sortKey': 'deleted'}
+    assert user_manager.dynamo.client.get_item(key) is None
+    user_manager.on_user_delete(user.id, old_item=user.item)
+    assert user_manager.dynamo.client.get_item(key) is not None
+
+
+def test_on_user_delete_deletes_trending(user_manager, user):
+    # give the user some trending, verify
+    user.trending_increment_score()
+    assert user.refresh_trending_item().trending_item
+
+    # run the handler, verify the trending was deleted
+    user_manager.on_user_delete(user.id, old_item=user.item)
+    assert user.refresh_trending_item().trending_item is None
+
+
+def test_on_user_delete_deletes_photo_s3_objects(user_manager, user):
+    # add a profile pic of all sizes for that user, verify they are all in s3
+    post_id = str(uuid4())
+    paths = [user.get_photo_path(size, photo_post_id=post_id) for size in image_size.JPEGS]
+    for path in paths:
+        user.s3_uploads_client.put_object(path, b'somedata', 'image/jpeg')
+    for path in paths:
+        assert user_manager.s3_uploads_client.exists(path)
+
+    # run the handler, verify those images were all deleted
+    user_manager.on_user_delete(user.id, old_item=user.item)
+    for path in paths:
+        assert not user.s3_uploads_client.exists(path)
 
 
 def test_on_card_add_increment_count(user_manager, user, card):
@@ -202,7 +251,10 @@ def test_on_album_delete_update_album_count(user_manager, album, user, caplog):
     ],
 )
 def test_on_post_status_change_sync_counts_new_status(
-    user_manager, user, new_status, count_col_incremented,
+    user_manager,
+    user,
+    new_status,
+    count_col_incremented,
 ):
     post_id = str(uuid4())
     new_item = {'postId': post_id, 'postedByUserId': user.id, 'postStatus': new_status}
@@ -232,7 +284,11 @@ def test_on_post_status_change_sync_counts_new_status(
     [[PostStatus.COMPLETED, 'postCount'], [PostStatus.ARCHIVED, 'postArchivedCount']],
 )
 def test_on_post_status_change_sync_counts_old_status(
-    user_manager, user, old_status, count_col_decremented, caplog,
+    user_manager,
+    user,
+    old_status,
+    count_col_decremented,
+    caplog,
 ):
     post_id = str(uuid4())
     new_item = {'postId': post_id, 'postedByUserId': user.id, 'postStatus': 'whateves'}
@@ -293,3 +349,23 @@ def test_on_user_contact_attribute_change_update_subitem(
     with patch.object(user_manager, dynamo_lib_name) as dynamo_lib_mock:
         getattr(user_manager, method_name)(user.id, old_item=old_item)
     assert dynamo_lib_mock.mock_calls == [call.delete('new-value', user.id)]
+
+
+def test_delete_user_clears_cognito(user_manager, user, cognito_client):
+    # moto has not yet implemented identity pool describeIdentity, so skipping that for now
+    assert cognito_client.get_user_attributes(user.id)
+
+    # user status with RESETTING, verify leaves cognito alone
+    old_item = {**user.item, 'userStatus': UserStatus.RESETTING}
+    user_manager.on_user_delete_delete_cognito(user.id, old_item=old_item)
+    cognito_client.get_user_attributes(user.id)
+
+    # user status with anything other than RESETTING
+    user_manager.on_user_delete_delete_cognito(user.id, old_item=user.item)
+    with pytest.raises(cognito_client.user_pool_client.exceptions.UserNotFoundException):
+        cognito_client.get_user_attributes(user.id)
+
+    # fire again, make sure handler doesn't error out on missing cognito profile
+    user_manager.on_user_delete_delete_cognito(user.id, old_item=user.item)
+    with pytest.raises(cognito_client.user_pool_client.exceptions.UserNotFoundException):
+        cognito_client.get_user_attributes(user.id)
