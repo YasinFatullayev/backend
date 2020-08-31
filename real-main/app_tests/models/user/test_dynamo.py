@@ -515,8 +515,6 @@ def test_set_last_client(user_dynamo):
         ['increment_post_viewed_by_count', 'decrement_post_viewed_by_count', 'postViewedByCount'],
     ],
 )
-
-
 def test_increment_decrement_count(user_dynamo, caplog, incrementor_name, decrementor_name, attribute_name):
     incrementor = getattr(user_dynamo, incrementor_name)
     decrementor = getattr(user_dynamo, decrementor_name) if decrementor_name else None
