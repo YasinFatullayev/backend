@@ -26,3 +26,4 @@ class UserGender:
     FEMALE = 'FEMALE'
 
     _ALL = (MALE, FEMALE)
+

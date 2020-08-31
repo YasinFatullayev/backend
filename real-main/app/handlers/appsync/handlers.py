@@ -84,12 +84,8 @@ def validate_caller(func):
 def create_cognito_only_user(caller_user_id, arguments, source, context):
     username = arguments['username']
     full_name = arguments.get('fullName')
-    birthday = arguments.get('birthday')
-    gender = arguments.get('gender')
     try:
-        user = user_manager.create_cognito_only_user(
-            caller_user_id, username, full_name=full_name, birthday=birthday, gender=gender
-        )
+        user = user_manager.create_cognito_only_user(caller_user_id, username, full_name=full_name)
     except UserException as err:
         raise ClientException(str(err)) from err
     return user.serialize(caller_user_id)

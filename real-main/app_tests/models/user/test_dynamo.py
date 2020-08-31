@@ -458,7 +458,7 @@ def test_set_user_gender(user_dynamo):
     # set gender to Female
     user_item = user_dynamo.set_user_gender(user_id, UserGender.FEMALE)
     assert user_item['gender'] == UserGender.FEMALE
-    
+
 
 @pytest.mark.parametrize(
     'incrementor_name, decrementor_name, attribute_name',
