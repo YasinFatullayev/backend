@@ -246,7 +246,7 @@ class PostManager(FlagManagerMixin, TrendingManagerMixin, ViewManagerMixin, Mana
             post_item = self.dynamo.client.get_item(post_pk)
             self.init_post(post_item).delete()
 
-    def delete_all_by_user(self, user_id):
+    def on_user_delete_delete_all_by_user(self, user_id, old_item):
         for post_item in self.dynamo.generate_posts_by_user(user_id):
             self.init_post(post_item).delete()
 
@@ -339,7 +339,7 @@ class PostManager(FlagManagerMixin, TrendingManagerMixin, ViewManagerMixin, Mana
             self.appsync.client.fire_notification(new_post.user_id, GqlNotificationType.POST_COMPLETED, **kwargs)
 
     def on_post_verification_hidden_change_update_is_verified(self, post_id, new_item, old_item=None):
-        old_verif_hidden = old_item.get('verificationHidden', False)
+        old_verif_hidden = (old_item or {}).get('verificationHidden', False)
         new_verif_hidden = new_item.get('verificationHidden', False)
 
         is_verif = None
@@ -350,3 +350,19 @@ class PostManager(FlagManagerMixin, TrendingManagerMixin, ViewManagerMixin, Mana
 
         if is_verif is not None:
             self.dynamo.set_is_verified(post_id, is_verif, hidden=new_verif_hidden)
+
+    def on_post_view_add_delete_sync_viewed_by_counts(self, post_id, new_item=None, old_item=None):
+        assert not (new_item and old_item), 'Should only be called for INSERT and REMOVE'
+        user_id = (new_item or old_item)['sortKey'].split('/')[1]
+        post = self.get_post(post_id)
+
+        # ignore posts that have been deleted and our own views on our own post
+        if not post or post.user_id == user_id:
+            return
+
+        if new_item:
+            self.dynamo.increment_viewed_by_count(post_id)
+            self.user_manager.dynamo.increment_post_viewed_by_count(post.user_id)
+        if old_item:
+            self.dynamo.decrement_viewed_by_count(post_id)
+            self.user_manager.dynamo.decrement_post_viewed_by_count(post.user_id)

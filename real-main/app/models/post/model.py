@@ -354,7 +354,10 @@ class Post(FlagModelMixin, TrendingModelMixin, ViewModelMixin):
 
         # complete the post
         self.item = self.dynamo.set_post_status(
-            self.item, PostStatus.COMPLETED, original_post_id=original_post_id, album_rank=album_rank,
+            self.item,
+            PostStatus.COMPLETED,
+            original_post_id=original_post_id,
+            album_rank=album_rank,
         )
 
         # update the user's profile photo, if needed
@@ -610,15 +613,12 @@ class Post(FlagModelMixin, TrendingModelMixin, ViewModelMixin):
         if self.user_id == user_id:
             return True  # post owner's views don't count for trending, etc.
 
-        trending_kwargs = {'now': viewed_at, 'multiplier': self.get_trending_multiplier()}
-        recorded = self.trending_increment_score(**trending_kwargs)
-        if recorded:
-            self.user.trending_increment_score(**trending_kwargs)
-
-        # record the viewedBy on the post and user
+        # only a user's first view a of a post counts for trending
         if is_new_view:
-            self.dynamo.increment_viewed_by_count(self.id)
-            self.user_manager.dynamo.increment_post_viewed_by_count(self.user_id)
+            trending_kwargs = {'now': viewed_at, 'multiplier': self.get_trending_multiplier()}
+            recorded = self.trending_increment_score(**trending_kwargs)
+            if recorded:
+                self.user.trending_increment_score(**trending_kwargs)
 
         # If this is a non-original post, count this like a view of the original post as well
         if self.original_post_id != self.id:

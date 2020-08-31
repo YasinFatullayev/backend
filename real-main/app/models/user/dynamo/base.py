@@ -199,6 +199,14 @@ class UserDynamo:
             query_kwargs['ExpressionAttributeValues'] = {':aev': version}
         return self.client.update_item(query_kwargs)
 
+    def set_last_client(self, user_id, client):
+        query_kwargs = {
+            'Key': self.pk(user_id),
+            'UpdateExpression': 'SET lastClient = :lc',
+            'ExpressionAttributeValues': {':lc': client},
+        }
+        return self.client.update_item(query_kwargs)
+
     def grant_subscription(self, user_id, sub_level, sub_granted_at, sub_expires_at):
         assert sub_level != UserSubscriptionLevel.BASIC, "Cannot grant BASIC subscriptions"
         assert sub_expires_at, "Subscription grants must expire"
@@ -349,3 +357,27 @@ class UserDynamo:
 
     def increment_post_viewed_by_count(self, user_id):
         return self.client.increment_count(self.pk(user_id), 'postViewedByCount')
+
+    def decrement_post_viewed_by_count(self, user_id):
+        return self.client.decrement_count(self.pk(user_id), 'postViewedByCount')
+
+    def add_user_deleted(self, user_id, now=None):
+        now = now or pendulum.now('utc')
+        deleted_at_str = now.to_iso8601_string()
+        item = {
+            'partitionKey': f'user/{user_id}',
+            'sortKey': 'deleted',
+            'schemaVersion': 0,
+            'userId': user_id,
+            'deletedAt': deleted_at_str,
+            'gsiA1PartitionKey': 'userDeleted',
+            'gsiA1SortKey': deleted_at_str,
+        }
+        try:
+            return self.client.add_item({'Item': item})
+        except self.client.exceptions.ConditionalCheckFailedException:
+            logger.warning(f'Failed to add UserDeleted subitem for user `{user_id}`: already exists')
+
+    def delete_user_deleted(self, user_id):
+        key = {'partitionKey': f'user/{user_id}', 'sortKey': 'deleted'}
+        return self.client.delete_item(key)

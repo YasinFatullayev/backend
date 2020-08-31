@@ -42,32 +42,6 @@ def test_record_view_count_logs_warning_for_non_completed_posts(post, user2, cap
     assert post.id in caplog.records[0].msg
 
 
-def test_record_view_count_increments_counters(post, user2, user3):
-    # check starting state
-    assert post.refresh_item().item.get('viewedByCount', 0) == 0
-    assert post.user.refresh_item().item.get('postViewedByCount', 0) == 0
-
-    # verify recording view by post owner doesn't affect these counters
-    post.record_view_count(post.user_id, 2)
-    assert post.refresh_item().item.get('viewedByCount', 0) == 0
-    assert post.user.refresh_item().item.get('postViewedByCount', 0) == 0
-
-    # verify recording view by rando increments counters
-    post.record_view_count(user2.id, 2)
-    assert post.refresh_item().item.get('viewedByCount', 0) == 1
-    assert post.user.refresh_item().item.get('postViewedByCount', 0) == 1
-
-    # verify recording view by rando increments counters
-    post.record_view_count(user3.id, 2)
-    assert post.refresh_item().item.get('viewedByCount', 0) == 2
-    assert post.user.refresh_item().item.get('postViewedByCount', 0) == 2
-
-    # verify recording view by rando that's already viewed does not increment counters
-    post.record_view_count(user2.id, 2)
-    assert post.refresh_item().item.get('viewedByCount', 0) == 2
-    assert post.user.refresh_item().item.get('postViewedByCount', 0) == 2
-
-
 def test_record_view_count_records_to_original_post_as_well(post, post2, user2):
     # verify post owner's view doesn't make it up to the original
     post.item['originalPostId'] = post2.id
@@ -101,12 +75,44 @@ def test_text_only_posts_trend(post_manager, user, user2):
     assert user.trending_score == 1
 
 
+def test_only_first_view_of_post_causes_trending(post_manager, user, user2, user3):
+    # add a post
+    post = post_manager.add_post(user, str(uuid.uuid4()), PostType.TEXT_ONLY, text='t')
+    assert post.type == PostType.TEXT_ONLY
+    assert post.trending_score is not None
+    assert user.trending_score is None
+
+    # record a view, verify that boosts trending score
+    org_post_trending_score = post.trending_score
+    post.record_view_count(user2.id, 4)
+    assert post.refresh_trending_item().trending_score > org_post_trending_score
+    assert user.refresh_trending_item().trending_score is not None
+
+    # record another view by the same user, verify trending scores don't change
+    org_post_trending_score = post.trending_score
+    org_user_trending_score = post.user.trending_score
+    post.record_view_count(user2.id, 2)
+    assert post.refresh_trending_item().trending_score == org_post_trending_score
+    assert user.refresh_trending_item().trending_score == org_user_trending_score
+
+    # record a view by a different user, verify trending scores go up again
+    org_post_trending_score = post.trending_score
+    org_user_trending_score = post.user.trending_score
+    post.record_view_count(user3.id, 2)
+    assert post.refresh_trending_item().trending_score > org_post_trending_score
+    assert user.refresh_trending_item().trending_score > org_user_trending_score
+
+
 def test_non_verified_image_posts_trend_with_lower_multiplier(post_manager, user, user2, image_data_b64):
     # create an original post that fails verification
     now = pendulum.parse('2020-06-09T00:00:00Z')  # exact begining of day so post gets exactly one free trending
     post_manager.clients['post_verification'].configure_mock(**{'verify_image.return_value': False})
     post = post_manager.add_post(
-        user, str(uuid.uuid4()), PostType.IMAGE, image_input={'imageData': image_data_b64}, now=now,
+        user,
+        str(uuid.uuid4()),
+        PostType.IMAGE,
+        image_input={'imageData': image_data_b64},
+        now=now,
     )
     assert post.type == PostType.IMAGE
     assert post.is_verified is False

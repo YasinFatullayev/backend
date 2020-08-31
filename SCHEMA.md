@@ -40,7 +40,7 @@ We have no local secondary indexes.
 | `chat/{chatId}` | `-` | `0` | `chatId`, `chatType`, `name`, `createdByUserId`, `createdAt`, `lastMessageActivityAt`, `flagCount`, `messagesCount`, `userCount` | `chat/{userId1}/{userId2}` | `-` |
 | `chat/{chatId}` | `flag/{userId}` | `0` | `createdAt` | | | | | | | | | `flag/{userId}` | `chat` |
 | `chat/{chatId}` | `member/{userId}` | `1` | `messagesUnviewedCount` | | | | | | | | | `chat/{chatId}` | `member/{joinedAt}` | `member/{userId}` | `chat/{lastMessageActivityAt}` |
-| `chat/{chatId}` | `view/{userId}` | `0` | `firstViewedAt`, `lastViewedAt`, `viewCount` | | | | | | | | | `chat/{chatId}` | `view/{firstViewedAt}` |
+| `chat/{chatId}` | `view/{userId}` | `0` | `firstViewedAt`, `lastViewedAt`, `viewCount` | `chatView/{chatId}` | `{firstViewedAt}` | `chatView/{userId}` | `{firstViewedAt}` |
 | `chatMessage/{messageId}` | `-` | `0` | `messageId`, `chatId`, `userId`, `createdAt`, `flagCount`, `lastEditedAt`, `text`, `textTags:[{tag, userId}]` | `chatMessage/{chatId}` | `{createdAt}` |
 | `chatMessage/{messageId}` | `flag/{userId}` | `0` | `createdAt` | | | | | | | | | `flag/{userId}` | `chatMessage` |
 | `comment/{commentId}` | `-` | `1` | `commentId`, `postId`, `userId`, `commentedAt`, `text`, `textTags:[{tag, userId}]`, `flagCount` | `comment/{postId}` | `{commentedAt}` | `comment/{userId}` | `{commentedAt}` |
@@ -52,9 +52,11 @@ We have no local secondary indexes.
 | `post/{postId}` | `like/{userId}` | `1` | `likedByUserId`, `likeStatus`, `likedAt`, `postId` | `like/{likedByUserId}` | `{likeStatus}/{likedAt}` | `like/{postId}` | `{likeStatus}/{likedAt}` | | | | | | | `like/{postedByUserId}` | `{likedByUserId}` |
 | `post/{postId}` | `originalMetadata` | `0` | `originalMetadata` |
 | `post/{postId}` | `trending` | `0` | `lastDeflatedAt`, `createdAt` | | | | | | | `post/trending` | `{score}` |
-| `post/{postId}` | `view/{userId}` | `0` | `firstViewedAt`, `lastViewedAt`, `viewCount` | | | | | | | | | `post/{postId}` | `view/{firstViewedAt}` |
-| `user/{userId}` | `profile` | `11` | `userId`, `username`, `email`, `phoneNumber`, `fullName`, `birthday`, `gender`, `bio`, `photoPostId`, `userStatus`, `privacyStatus`, `subscriptionLevel`, `subscriptionGrantedAt`, `subscriptionExpiresAt`, `albumCount`, `chatMessagesCreationCount`, `chatMessagesDeletionCount`, `chatMessagesForcedDeletionCount`, `chatCount`, `chatsWithUnviewedMessagesCount`, `cardCount`, `commentCount`, `commentDeletedCount`, `commentForcedDeletionCount`, `followedCount`, `followerCount`, `followersRequestedCount`, `postCount`, `postArchivedCount`, `postDeletedCount`, `postForcedArchivingCount`, `lastManuallyReindexedAt`, `lastPostViewAt`, `languageCode`, `themeCode`, `placeholderPhotoCode`, `signedUpAt`, `lastDisabedAt`, `acceptedEULAVersion`, `postViewedByCount`, `usernameLastValue`, `usernameLastChangedAt`, `followCountsHidden:Boolean`, `commentsDisabled:Boolean`, `likesDisabled:Boolean`, `sharingDisabled:Boolean`, `verificationHidden:Boolean` | `username/{username}` | `-` | | | | | | | `user/{subscriptionLevel}` | `{subscriptionExpiresAt}` or `~` |
+| `post/{postId}` | `view/{userId}` | `0` | `firstViewedAt`, `lastViewedAt`, `viewCount` | `postView/{postId}` | `{firstViewedAt}` | `postView/{userId}` | `{firstViewedAt}` |
+| `screen/{screenId}` | `view/{userId}` | `0` | `firstViewedAt`, `lastViewedAt`, `viewCount` | `screenView/{screenId}` | `{firstViewedAt}` | `screenView/{userId}` | `{firstViewedAt}` |
+| `user/{userId}` | `profile` | `11` | `userId`, `username`, `email`, `phoneNumber`, `fullName`, `birthday`, `gender`, `bio`, `photoPostId`, `userStatus`, `privacyStatus`, `subscriptionLevel`, `subscriptionGrantedAt`, `subscriptionExpiresAt`, `albumCount`, `chatMessagesCreationCount`, `chatMessagesDeletionCount`, `chatMessagesForcedDeletionCount`, `chatCount`, `chatsWithUnviewedMessagesCount`, `cardCount`, `commentCount`, `commentDeletedCount`, `commentForcedDeletionCount`, `followedCount`, `followerCount`, `followersRequestedCount`, `postCount`, `postArchivedCount`, `postDeletedCount`, `postForcedArchivingCount`, `lastManuallyReindexedAt`, `lastPostViewAt`, `lastClient`, `languageCode`, `themeCode`, `placeholderPhotoCode`, `signedUpAt`, `lastDisabedAt`, `acceptedEULAVersion`, `postViewedByCount`, `usernameLastValue`, `usernameLastChangedAt`, `followCountsHidden:Boolean`, `commentsDisabled:Boolean`, `likesDisabled:Boolean`, `sharingDisabled:Boolean`, `verificationHidden:Boolean` | `username/{username}` | `-` | | | | | | | `user/{subscriptionLevel}` | `{subscriptionExpiresAt}` or `~` |
 | `user/{userId}` | `blocker/{userId}`| `0` | `blockerUserId`, `blockedUserId`, `blockedAt` | `block/{blockerUserId}` | `{blockedAt}` | `block/{blockedUserId}` | `{blockedAt}` |
+| `user/{userId}` | `deleted`| `0` | `userId`, `deletedAt` | `userDeleted` | `{deletedAt}` |
 | `user/{userId}` | `follower/{userId}` | `1` | `followedAt`, `followStatus`, `followerUserId`, `followedUserId`  | `follower/{followerUserId}` | `{followStatus}/{followedAt}` | `followed/{followedUserId}` | `{followStatus}/{followedAt}` |
 | `user/{userId}` | `follower/{userId}/firstStory` | `1` | `postId` | | | `follower/{followerUserId}/firstStory` | `{expiresAt}` |
 | `user/{userId}` | `trending` | `0` | `lastDeflatedAt`, `createdAt` | | | | | | | `user/trending` | `{score}` |
@@ -80,6 +82,7 @@ We have no local secondary indexes.
   - `userId` and `userId2` in the field are the two users in the chat, their id's in alphanumeric sorted order
 - only `Card` items with `postId`, `commentId` attributes will have indexes `GSI-A2` and `GSI-A3`
 - For `AppStoreReceipt` and `AppStoreSub` items, fields `receiptData`, `originalTransactionId`, `latestReceiptInfo`, `expiresAt` etc all match the meaning described in the [apple documentation](https://developer.apple.com/documentation/appstorereceipts).
+- The `userDeleted` subitem is added when a user is deleted and serves as an anonymous tombstone
 
 ### Feed Table
 

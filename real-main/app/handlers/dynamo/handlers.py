@@ -20,6 +20,7 @@ xray.patch_all()
 clients = {
     'appstore': clients.AppStoreClient(),
     'appsync': clients.AppSyncClient(),
+    'cognito': clients.CognitoClient(),
     'dynamo': clients.DynamoClient(),
     'dynamo_feed': clients.DynamoClient(table_name=DYNAMO_FEED_TABLE),
     'elasticsearch': clients.ElasticSearchClient(),
@@ -30,13 +31,16 @@ clients = {
 managers = {}
 album_manager = managers.get('album') or models.AlbumManager(clients, managers=managers)
 appstore_manager = managers.get('appstore_receipt') or models.AppStoreManager(clients, managers=managers)
+block_manager = managers.get('block') or models.BlockManager(clients, managers=managers)
 card_manager = managers.get('card') or models.CardManager(clients, managers=managers)
 chat_manager = managers.get('chat') or models.ChatManager(clients, managers=managers)
 chat_message_manager = managers.get('chat_message') or models.ChatMessageManager(clients, managers=managers)
 comment_manager = managers.get('comment') or models.CommentManager(clients, managers=managers)
 feed_manager = managers.get('feed') or models.FeedManager(clients, managers=managers)
 follower_manager = managers.get('follower') or models.FollowerManager(clients, managers=managers)
+like_manager = managers.get('like') or models.LikeManager(clients, managers=managers)
 post_manager = managers.get('post') or models.PostManager(clients, managers=managers)
+screen_manager = managers.get('screen') or models.ScreenManager(clients, managers=managers)
 user_manager = managers.get('user') or models.UserManager(clients, managers=managers)
 
 # https://stackoverflow.com/a/46738251
@@ -90,7 +94,11 @@ register('chatMessage', 'flag', ['REMOVE'], chat_message_manager.on_flag_delete)
 register('comment', '-', ['INSERT'], post_manager.on_comment_add)
 register('comment', '-', ['INSERT'], user_manager.on_comment_add)
 register(
-    'comment', '-', ['INSERT', 'MODIFY'], card_manager.on_comment_text_tags_change_update_card, {'textTags': []},
+    'comment',
+    '-',
+    ['INSERT', 'MODIFY'],
+    card_manager.on_comment_text_tags_change_update_card,
+    {'textTags': []},
 )
 register('comment', '-', ['REMOVE'], card_manager.on_comment_delete_delete_cards)
 register('comment', '-', ['REMOVE'], comment_manager.on_item_delete_delete_flags)
@@ -120,7 +128,11 @@ register(
     {'originalPostId': None},
 )
 register(
-    'post', '-', ['INSERT', 'MODIFY'], card_manager.on_post_text_tags_change_update_card, {'textTags': []},
+    'post',
+    '-',
+    ['INSERT', 'MODIFY'],
+    card_manager.on_post_text_tags_change_update_card,
+    {'textTags': []},
 )
 register(
     'post',
@@ -160,10 +172,26 @@ register('post', 'flag', ['REMOVE'], post_manager.on_flag_delete)
 register('post', 'like', ['INSERT'], post_manager.on_like_add)
 register('post', 'like', ['REMOVE'], post_manager.on_like_delete)
 register(
-    'post', 'view', ['INSERT', 'MODIFY'], card_manager.on_post_view_count_change_update_cards, {'viewCount': 0},
+    'post',
+    'view',
+    ['INSERT', 'MODIFY'],
+    card_manager.on_post_view_count_change_update_cards,
+    {'viewCount': 0},
 )
 register(
-    'post', 'view', ['INSERT', 'MODIFY'], post_manager.on_post_view_count_change_update_counts, {'viewCount': 0},
+    'post',
+    'view',
+    ['INSERT', 'MODIFY'],
+    post_manager.on_post_view_count_change_update_counts,
+    {'viewCount': 0},
+)
+register('post', 'view', ['INSERT', 'REMOVE'], post_manager.on_post_view_add_delete_sync_viewed_by_counts)
+register(
+    'user',
+    'follower',
+    ['INSERT', 'MODIFY', 'REMOVE'],
+    feed_manager.on_user_follow_status_change_sync_feed,
+    {'followStatus': FollowStatus.NOT_FOLLOWING},
 )
 register(
     'user',
@@ -172,6 +200,28 @@ register(
     follower_manager.on_first_story_post_id_change_fire_gql_notifications,
     {'postId': None},
 )
+register(
+    'user',
+    'follower',
+    ['INSERT', 'MODIFY', 'REMOVE'],
+    follower_manager.on_user_follow_status_change_sync_first_story,
+    {'followStatus': FollowStatus.NOT_FOLLOWING},
+)
+register(
+    'user',
+    'follower',
+    ['INSERT', 'MODIFY', 'REMOVE'],
+    like_manager.on_user_follow_status_change_sync_likes,
+    {'followStatus': FollowStatus.NOT_FOLLOWING},
+)
+register(
+    'user',
+    'follower',
+    ['INSERT', 'MODIFY', 'REMOVE'],
+    user_manager.sync_follow_counts_due_to_follow_status,
+    {'followStatus': FollowStatus.NOT_FOLLOWING},
+)
+register('user', 'profile', ['INSERT'], user_manager.on_user_add_delete_user_deleted_subitem)
 register(
     'user',
     'profile',
@@ -244,23 +294,24 @@ register(
     user_manager.on_user_phone_number_change_update_subitem,
     {'phoneNumber': None},
 )
-register(
-    'user',
-    'follower',
-    ['INSERT', 'MODIFY', 'REMOVE'],
-    feed_manager.on_user_follow_status_change_sync_feed,
-    {'followStatus': FollowStatus.NOT_FOLLOWING},
-)
-register(
-    'user',
-    'follower',
-    ['INSERT', 'MODIFY', 'REMOVE'],
-    user_manager.sync_follow_counts_due_to_follow_status,
-    {'followStatus': FollowStatus.NOT_FOLLOWING},
-)
+register('user', 'profile', ['REMOVE'], album_manager.on_user_delete_delete_all_by_user)
 register('user', 'profile', ['REMOVE'], appstore_manager.on_user_delete_delete_receipts)
+register('user', 'profile', ['REMOVE'], block_manager.on_user_delete_unblock_all_blocks)
 register('user', 'profile', ['REMOVE'], card_manager.on_user_delete_delete_cards)
+register('user', 'profile', ['REMOVE'], chat_manager.on_user_delete_delete_flags)
+register('user', 'profile', ['REMOVE'], chat_manager.on_user_delete_delete_views)
+register('user', 'profile', ['REMOVE'], chat_manager.on_user_delete_leave_all_chats)
+register('user', 'profile', ['REMOVE'], chat_message_manager.on_user_delete_delete_flags)
+register('user', 'profile', ['REMOVE'], comment_manager.on_user_delete_delete_all_by_user)
+register('user', 'profile', ['REMOVE'], comment_manager.on_user_delete_delete_flags)
+register('user', 'profile', ['REMOVE'], follower_manager.on_user_delete_delete_follower_items)
+register('user', 'profile', ['REMOVE'], like_manager.on_user_delete_dislike_all_by_user)
+register('user', 'profile', ['REMOVE'], post_manager.on_user_delete_delete_all_by_user)
+register('user', 'profile', ['REMOVE'], post_manager.on_user_delete_delete_flags)
+register('user', 'profile', ['REMOVE'], post_manager.on_user_delete_delete_views)
+register('user', 'profile', ['REMOVE'], screen_manager.on_user_delete_delete_views)
 register('user', 'profile', ['REMOVE'], user_manager.on_user_delete)
+register('user', 'profile', ['REMOVE'], user_manager.on_user_delete_delete_cognito)
 
 
 @handler_logging
