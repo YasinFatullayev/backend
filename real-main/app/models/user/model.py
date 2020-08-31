@@ -213,13 +213,6 @@ class User(TrendingModelMixin):
         self.item = self.dynamo.set_user_privacy_status(self.id, privacy_status)
         return self
 
-    def set_gender(self, gender):
-        old_gender = self.item.get('gender')
-        if gender == old_gender:
-            return self
-
-        self.item = self.dynamo.set_user_gender(self.id, gender)
-
     def set_last_client(self, client):
         if self.item.get('lastClient') != client:
             self.item = self.dynamo.set_last_client(self.id, client)

@@ -91,9 +91,9 @@ describe('Read and write properties our our own profile', () => {
     // Set another values to current User
     resp = await client.mutate({
       mutation: mutations.setUserDetails,
-      variables: {anotherBirthday, gender: 'FEMALE'},
+      variables: {birthday: anotherBirthday, gender: 'FEMALE'},
     })
-    expect(resp.data.setUserDetails.birthday).toBe(birthday)
+    expect(resp.data.setUserDetails.birthday).toBe(anotherBirthday)
     expect(resp.data.setUserDetails.gender).toBe('FEMALE')
   })
 })

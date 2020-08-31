@@ -259,11 +259,11 @@ def set_user_details(caller_user, arguments, **kwargs):
         caller_user.set_privacy_status(privacy_status)
 
     # Set Gender
-    if gender is not None:
-        try:
-            caller_user.set_gender(gender)
-        except UserException as err:
-            raise ClientException(str(err))
+    # if gender is not None:
+    #     try:
+    #         caller_user.set_gender(gender)
+    #     except UserException as err:
+    #         raise ClientException(str(err))
 
     # update the simple properties
     caller_user.update_details(
@@ -277,7 +277,8 @@ def set_user_details(caller_user, arguments, **kwargs):
         likes_disabled=likes_disabled,
         sharing_disabled=sharing_disabled,
         verification_hidden=verification_hidden,
-        birthday=birthday
+        birthday=birthday,
+        gender=gender,
     )
     return caller_user.serialize(caller_user.id)
 

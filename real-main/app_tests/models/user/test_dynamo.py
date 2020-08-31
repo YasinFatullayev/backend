@@ -5,7 +5,7 @@ import pendulum
 import pytest
 
 from app.models.user.dynamo import UserDynamo
-from app.models.user.enums import UserGender, UserPrivacyStatus, UserStatus, UserSubscriptionLevel
+from app.models.user.enums import UserPrivacyStatus, UserStatus, UserSubscriptionLevel
 from app.models.user.exceptions import UserAlreadyExists, UserAlreadyGrantedSubscription
 
 
@@ -221,6 +221,7 @@ def test_set_user_details(user_dynamo):
     user_id = 'my-user-id'
     username = 'my-username'
     birthday = pendulum.from_format('1900-01-01', 'YYYY-MM-DD').to_iso8601_string()
+    gender = 'MALE'
 
     user_dynamo.add_user('other-id-1', 'noise-1', 'cog-noise-1')
     expected_base_item = user_dynamo.add_user(user_id, username)
@@ -245,6 +246,7 @@ def test_set_user_details(user_dynamo):
         sharing_disabled=True,
         verification_hidden=True,
         birthday=birthday,
+        gender=gender,
     )
     expected = {
         **expected_base_item,
@@ -262,6 +264,7 @@ def test_set_user_details(user_dynamo):
             'sharingDisabled': True,
             'verificationHidden': True,
             'birthday': birthday,
+            'gender': gender,
         },
     }
     assert resp == expected
@@ -441,23 +444,6 @@ def test_set_user_privacy_status(user_dynamo):
     # back to public
     user_item = user_dynamo.set_user_privacy_status(user_id, UserPrivacyStatus.PUBLIC)
     assert user_item['privacyStatus'] == UserPrivacyStatus.PUBLIC
-
-
-def test_set_user_gender(user_dynamo):
-    user_id = 'my-user-id'
-    username = 'my-username'
-
-    # create the user
-    user_item = user_dynamo.add_user(user_id, username)
-    assert user_item['userId'] == user_id
-
-    # set gender to Male
-    user_item = user_dynamo.set_user_gender(user_id, UserGender.MALE)
-    assert user_item['gender'] == UserGender.MALE
-
-    # set gender to Female
-    user_item = user_dynamo.set_user_gender(user_id, UserGender.FEMALE)
-    assert user_item['gender'] == UserGender.FEMALE
 
 
 def test_set_last_client(user_dynamo):
