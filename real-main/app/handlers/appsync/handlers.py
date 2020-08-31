@@ -258,13 +258,6 @@ def set_user_details(caller_user, arguments, **kwargs):
     if privacy_status is not None:
         caller_user.set_privacy_status(privacy_status)
 
-    # Set Gender
-    # if gender is not None:
-    #     try:
-    #         caller_user.set_gender(gender)
-    #     except UserException as err:
-    #         raise ClientException(str(err))
-
     # update the simple properties
     caller_user.update_details(
         full_name=full_name,
