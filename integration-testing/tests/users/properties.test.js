@@ -81,7 +81,10 @@ describe('Read and write properties our our own profile', () => {
     const anotherBirthday = '1900-01-01'
     const {client, userId} = await loginCache.getCleanLogin()
 
+    // check values start unset
     let resp = await client.query({query: queries.user, variables: {userId}})
+    expect(resp.data.user.birthday).toBeNull()
+    expect(resp.data.user.gender).toBeNull()
 
     // Set values to current User
     resp = await client.mutate({mutation: mutations.setUserDetails, variables: {birthday, gender: 'MALE'}})
@@ -95,6 +98,11 @@ describe('Read and write properties our our own profile', () => {
     })
     expect(resp.data.setUserDetails.birthday).toBe(anotherBirthday)
     expect(resp.data.setUserDetails.gender).toBe('FEMALE')
+
+    // double check values were saved to DB
+    resp = await client.query({query: queries.user, variables: {userId}})
+    expect(resp.data.user.birthday).toBe(anotherBirthday)
+    expect(resp.data.user.gender).toBe('FEMALE')
   })
 })
 
