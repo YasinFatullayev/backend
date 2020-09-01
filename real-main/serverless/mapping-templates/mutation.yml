@@ -358,3 +358,9 @@
   field: triggerPostNotification
   dataSource: NoneDataSource
   response: PassThru.response.vtl
+
+- type: Mutation
+  field: findUsers
+  dataSource: LambdaDataSource
+  request: Lambda.request.vtl
+  response: Lambda.response.vtl
