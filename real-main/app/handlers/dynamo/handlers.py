@@ -179,8 +179,8 @@ register(
     {'viewCount': 0},
 )
 register(
-    'user',
-    'follower',
+    'post',
+    'view',
     ['INSERT', 'MODIFY'],
     post_manager.on_post_view_count_change_update_counts,
     {'viewCount': 0},
