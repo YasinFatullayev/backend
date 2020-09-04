@@ -199,6 +199,30 @@ def finish_change_user_phone_number(caller_user, arguments, **kwargs):
     return caller_user.serialize(caller_user.id)
 
 
+@routes.register('Mutation.findUsers')
+@validate_caller
+@update_last_client
+def find_users(caller_user_id, arguments, **kwargs):
+    emails = arguments.get('emails')
+    phones = arguments.get('phoneNumbers')
+
+    args = (
+        emails,
+        phones,
+    )
+    if all(v is None for v in args):
+        raise ClientException('Called without any arguments... probably not what you intended?')
+    try:
+        userList = user_manager.find_users(
+            user_id=caller_user_id,
+            emails=emails,
+            phones=phones,
+        )
+    except UserException as err:
+        raise ClientException(str(err)) from err
+    return userList
+
+
 @routes.register('Mutation.setUserDetails')
 @validate_caller
 @update_last_client

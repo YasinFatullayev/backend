@@ -33,3 +33,11 @@ class UserContactAttributeDynamo:
             'ReturnValues': 'ALL_OLD',
         }
         return self.client.table.delete_item(**kwargs).get('Attributes') or None
+
+    def getBatchItems(self, attrs):
+        values = []
+        for attr in attrs:
+            value = self.client.get_item(self.key(attr))['userId']
+            values.append(value)
+
+        return values

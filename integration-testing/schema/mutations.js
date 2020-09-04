@@ -818,3 +818,15 @@ module.exports.triggerPostNotification = gql`
     }
   }
 `
+
+module.exports.findUsers = gql`
+  mutation FindUsers($emails: [AWSEmail!], $phoneNumbers: [AWSPhone!]) {
+    findUsers(emails: $emails, phoneNumbers: $phoneNumbers) {
+      items {
+        userId
+        username
+      }
+      nextToken
+    }
+  }
+`

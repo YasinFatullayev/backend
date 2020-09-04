@@ -409,3 +409,37 @@ class UserManager(TrendingManagerMixin, ManagerBase):
                 logger.warning(f'No cognito user pool entry found when deleting user `{user_id}`')
             # TODO: catch 404 error & log warning
             self.cognito_client.delete_identity_pool_entry(user_id)
+
+    def find_users(self, user_id, emails=None, phones=None):
+        # Check
+        if emails is None and phones is None:
+            return []
+
+        # Get Batch Emails
+        if emails:
+            batchItemsWithEmail = self.email_dynamo.getBatchItems(emails)
+            userIdMergedList = batchItemsWithEmail
+
+        # Get Batch Phones
+        if phones:
+            batchItemsWithPhone = self.phone_number_dynamo.getBatchItems(phones)
+            userIdMergedList = batchItemsWithPhone
+
+        # Get Merged&Unique UserIdList
+        if emails and phones:
+            userIdMergedList = set(batchItemsWithEmail + batchItemsWithPhone)
+
+        userIdMergedList = sorted(userIdMergedList)
+        users = []
+        # Each Follow UserId
+        for userFollowItem in userIdMergedList:
+            # Get user with followId
+            followUser = self.get_user(userFollowItem)
+            # if not following
+            if self.follower_manager.get_follow_status(user_id, userFollowItem) == FollowStatus.NOT_FOLLOWING:
+                username = followUser.item['username']
+                self.card_manager.on_find_follow_user_card(user_id, username)
+            # save users
+            users.append(followUser.item)
+
+        return {"items": users}

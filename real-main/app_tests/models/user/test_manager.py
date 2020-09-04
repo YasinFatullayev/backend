@@ -513,3 +513,95 @@ def test_fire_gql_subscription_chats_with_unviewed_messages_count(user_manager):
     assert isinstance(
         appsync_client_mock.fire_notification.call_args.kwargs['userChatsWithUnviewedMessagesCount'], int
     )
+
+
+def test_find_users(user_manager, cognito_client):
+    user_id = 'my-user-id'
+
+    # Create User Only With Email
+    user_id1 = 'my-user-id1'
+    username1 = 'myusername1'
+    email1 = f'{username1}@real.app'
+
+    cognito_client.user_pool_client.admin_create_user(
+        UserPoolId=cognito_client.user_pool_id,
+        Username=user_id1,
+        UserAttributes=[
+            {'Name': 'email', 'Value': email1},
+            {'Name': 'email_verified', 'Value': 'true'},
+        ],
+    )
+    user1 = user_manager.create_cognito_only_user(user_id1, username1)
+    assert user1.id == user_id1
+    assert user1.item['email'] == email1
+
+    # Add first user to dynamo_contact_attribute with email
+    new_item = {**user1.item}
+    user_manager.on_user_email_change_update_subitem(user_id=user_id1, new_item=new_item)
+
+    # Create User Only With Phone
+    user_id2 = 'my-user-id2'
+    username2 = 'myusername2'
+    phone2 = '+1234-567-8900'
+
+    cognito_client.user_pool_client.admin_create_user(
+        UserPoolId=cognito_client.user_pool_id,
+        Username=user_id2,
+        UserAttributes=[
+            {'Name': 'phone_number', 'Value': phone2},
+            {'Name': 'phone_number_verified', 'Value': 'true'},
+        ],
+    )
+    user2 = user_manager.create_cognito_only_user(user_id2, username2)
+    assert user2.id == user_id2
+    assert user2.item['phoneNumber'] == phone2
+
+    # Add second user to dynamo_contact_attribute with phone
+    new_item = {**user2.item}
+    user_manager.on_user_phone_number_change_update_subitem(user_id=user_id2, new_item=new_item)
+
+    # Create User with both email&phone
+    user_id3 = 'my-user-id3'
+    username3 = 'myusername3'
+    email3 = f'{username3}@real.app'
+    phone3 = '+1234-567-8901'
+
+    cognito_client.user_pool_client.admin_create_user(
+        UserPoolId=cognito_client.user_pool_id,
+        Username=user_id3,
+        UserAttributes=[
+            {'Name': 'email', 'Value': email3},
+            {'Name': 'email_verified', 'Value': 'true'},
+            {'Name': 'phone_number', 'Value': phone3},
+            {'Name': 'phone_number_verified', 'Value': 'true'},
+        ],
+    )
+    user3 = user_manager.create_cognito_only_user(user_id3, username3)
+    assert user3.id == user_id3
+    assert user3.item['email'] == email3
+    assert user3.item['phoneNumber'] == phone3
+    # Add third user to dynamo_contact_attribute with email and phone
+
+    new_item = {**user3.item}
+    user_manager.on_user_email_change_update_subitem(user_id=user_id3, new_item=new_item)
+    user_manager.on_user_phone_number_change_update_subitem(user_id=user_id3, new_item=new_item)
+
+    # Check with None
+    assert user_manager.find_users(user_id) == []
+
+    # Check with only emails
+    emails = [email1, email3]
+    expectedUserList = [user1.item, user3.item]
+    userList = user_manager.find_users(user_id, emails=emails)
+    assert userList['items'] == expectedUserList
+
+    # Check with only phones
+    phones = [phone2, phone3]
+    expectedUserList = [user2.item, user3.item]
+    userList = user_manager.find_users(user_id, phones=phones)
+    assert userList['items'] == expectedUserList
+
+    # Check with both emails&phones
+    expectedUserList = [user1.item, user2.item, user3.item]
+    userList = user_manager.find_users(user_id, emails=emails, phones=phones)
+    assert userList['items'] == expectedUserList

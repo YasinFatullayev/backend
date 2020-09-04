@@ -221,18 +221,6 @@ module.exports.searchUsers = gql`
   }
 `
 
-module.exports.findUsers = gql`
-  query FindUsers($emails: [AWSEmail!], $phoneNumbers: [AWSPhone!]) {
-    findUsers(emails: $emails, phoneNumbers: $phoneNumbers) {
-      items {
-        userId
-        username
-      }
-      nextToken
-    }
-  }
-`
-
 module.exports.post = gql`
   query Post($postId: ID!, $onymouslyLikedByLimit: Int, $commentsReverse: Boolean) {
     post(postId: $postId) {
