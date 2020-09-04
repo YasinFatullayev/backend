@@ -56,18 +56,24 @@ type Query {
 
 type Mutation {
   # Set up a new user account
+  createAnonymousUser: User
   createCognitoOnlyUser(username: String!, fullName: String): User
   createAppleUser(username: String!, fullName: String, appleIdToken: String!): User
   createFacebookUser(username: String!, fullName: String, facebookAccessToken: String!): User
   createGoogleUser(username: String!, fullName: String, googleIdToken: String!): User
 
+  # Add a federated login to the user's account
+  linkAppleLogin(appleIdToken: String!): User
+  linkFacebookLogin(facebookAccessToken: String!): User
+  linkGoogleLogin(googleIdToken: String!): User
+
   # Change email, with verification. Use these mutations - do not update the user pool directly.
   startChangeUserEmail(email: AWSEmail!): User
-  finishChangeUserEmail(cognitoAccessToken: String!, verificationCode: String!): User
+  finishChangeUserEmail(verificationCode: String!): User
 
   # Change phone, with verification. Use these mutations - do not update the user pool directly.
   startChangeUserPhoneNumber(phoneNumber: AWSPhone!): User
-  finishChangeUserPhoneNumber(cognitoAccessToken: String!, verificationCode: String!): User
+  finishChangeUserPhoneNumber(verificationCode: String!): User
 
   # Find users
   #   - accepts up to 100 total combined emails and/or phoneNumbers at a time
@@ -581,6 +587,7 @@ input ChatMessageNotificationInput {
 
 enum UserStatus {
   ACTIVE
+  ANONYMOUS
   DISABLED
   DELETING
   RESETTING
