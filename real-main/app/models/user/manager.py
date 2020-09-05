@@ -9,6 +9,7 @@ import pendulum
 from app import models
 from app.mixins.base import ManagerBase
 from app.mixins.trending.manager import TrendingManagerMixin
+from app.models.card import templates
 from app.models.follower.enums import FollowStatus
 from app.models.post.enums import PostStatus
 from app.utils import GqlNotificationType
@@ -464,35 +465,32 @@ class UserManager(TrendingManagerMixin, ManagerBase):
             self.cognito_client.delete_identity_pool_entry(user_id)
 
     def find_users(self, user_id, emails=None, phones=None):
-        # Check
-        if emails is None and phones is None:
-            return []
+        emails = emails or []
+        phones = phones or []
 
         # Get Batch Emails
-        if emails:
-            batchItemsWithEmail = self.email_dynamo.getBatchItems(emails)
-            userIdMergedList = batchItemsWithEmail
+        batch_items_with_email = self.email_dynamo.batch_get_user_ids(emails)
 
         # Get Batch Phones
-        if phones:
-            batchItemsWithPhone = self.phone_number_dynamo.getBatchItems(phones)
-            userIdMergedList = batchItemsWithPhone
+        batch_items_with_phone = self.phone_number_dynamo.batch_get_user_ids(phones)
 
         # Get Merged&Unique UserIdList
-        if emails and phones:
-            userIdMergedList = set(batchItemsWithEmail + batchItemsWithPhone)
+        user_id_merged_list = set(batch_items_with_email + batch_items_with_phone)
 
-        userIdMergedList = sorted(userIdMergedList)
-        users = []
-        # Each Follow UserId
-        for userFollowItem in userIdMergedList:
-            # Get user with followId
-            followUser = self.get_user(userFollowItem)
+        # Sort the user_ids
+        users_ids = sorted(user_id_merged_list)
+
+        current_user = self.get_user(user_id)
+        current_username = current_user.item['username']
+        # Each UserId
+        for user_follower_id in users_ids:
             # if not following
-            if self.follower_manager.get_follow_status(user_id, userFollowItem) == FollowStatus.NOT_FOLLOWING:
-                username = followUser.item['username']
-                self.card_manager.on_find_follow_user_card(user_id, username)
-            # save users
-            users.append(followUser.item)
+            if self.follower_manager.get_follow_status(user_follower_id, user_id) == FollowStatus.NOT_FOLLOWING:
+                card_template = templates.FindFollowsCardTemplate(
+                    user_id=user_follower_id,
+                    user_id_joined=user_id,
+                    username_joined=current_username,
+                )
+                self.card_manager.add_or_update_card(card_template)
 
-        return {"items": users}
+        return users_ids

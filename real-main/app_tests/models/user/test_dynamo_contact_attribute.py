@@ -53,69 +53,23 @@ def test_basic_add_get_delete(uca_dynamo):
     assert uca_dynamo.get(attr_value_2) == item_2
 
 
-def test_get_bach_items_with_email(uca_dynamo):
-    # add 2 user emails
-    userId1 = str(uuid4())
-    userEmail1 = f'{userId1}@real.app'
+def test_bach_get_user_ids(uca_dynamo):
+    # add two items
+    user_id_1, user_id_2 = str(uuid4()), str(uuid4())
+    attr_1, attr_2 = str(uuid4())[:8], str(uuid4())[:8]
+    uca_dynamo.add(attr_1, user_id_1)
+    uca_dynamo.add(attr_2, user_id_2)
+    assert uca_dynamo.get(attr_1)
+    assert uca_dynamo.get(attr_2)
 
-    # check starting Email state
-    attr_value1 = userEmail1
-    assert uca_dynamo.get(attr_value1) is None
+    # check batch get of none
+    assert uca_dynamo.batch_get_user_ids([]) == []
+    assert uca_dynamo.batch_get_user_ids([str(uuid4())]) == []
 
-    # Add first item
-    item1 = uca_dynamo.add(attr_value1, userId1)
-    assert uca_dynamo.get(attr_value1) == item1
+    # check batch get of one
+    assert uca_dynamo.batch_get_user_ids([attr_1]) == [user_id_1]
+    assert uca_dynamo.batch_get_user_ids([str(uuid4()), attr_2]) == [user_id_2]
 
-    userId2 = str(uuid4())
-    userEmail2 = f'{userId2}@real.app'
-
-    # check starting Email state
-    attr_value2 = userEmail2
-    assert uca_dynamo.get(attr_value2) is None
-
-    # Add second item
-    item2 = uca_dynamo.add(attr_value2, userId2)
-    assert uca_dynamo.get(attr_value2) == item2
-
-    # Check Keys
-    # batchEmailKeys = []
-    # batchEmailItems = uca_dynamo.getBatchItems(batchEmailKeys)
-    # assert uca_dynamo.getBatchItems(batchEmailKeys) is None
-
-    batchEmailKeys = [attr_value1, attr_value2]
-    batchEmailItems = uca_dynamo.getBatchItems(batchEmailKeys)
-    assert uca_dynamo.getBatchItems(batchEmailKeys) == batchEmailItems
-
-
-def test_get_bach_items_with_phone(uca_dynamo):
-    # add 2 user phones
-    userId1 = str(uuid4())
-    userPhone1 = '+1234-567-8900'
-
-    # check starting Phone state
-    attr_value1 = userPhone1
-    assert uca_dynamo.get(attr_value1) is None
-
-    # Add first item
-    item1 = uca_dynamo.add(attr_value1, userId1)
-    assert uca_dynamo.get(attr_value1) == item1
-
-    userId2 = str(uuid4())
-    userPhone2 = '+1234-567-8901'
-
-    # check starting Phone state
-    attr_value2 = userPhone2
-    assert uca_dynamo.get(attr_value2) is None
-
-    # Add second item
-    item2 = uca_dynamo.add(attr_value2, userId2)
-    assert uca_dynamo.get(attr_value2) == item2
-
-    # Check Keys
-    # batchPhoneKeys = []
-    # batchPhoneItems = uca_dynamo.getBatchItems(batchPhoneKeys)
-    # assert uca_dynamo.getBatchItems(batchPhoneKeys) is None
-
-    batchPhoneKeys = [attr_value1, attr_value2]
-    batchPhoneItems = uca_dynamo.getBatchItems(batchPhoneKeys)
-    assert uca_dynamo.getBatchItems(batchPhoneKeys) == batchPhoneItems
+    # check batch get of two
+    assert uca_dynamo.batch_get_user_ids([attr_1, attr_2]) == [user_id_1, user_id_2]
+    assert uca_dynamo.batch_get_user_ids([attr_2, attr_1, str(uuid4())]) == [user_id_2, user_id_1]

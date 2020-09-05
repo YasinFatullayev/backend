@@ -14,8 +14,18 @@ class UserContactAttributeDynamo:
     def key(self, attr):
         return {'partitionKey': f'{self.pk_prefix}/{attr}', 'sortKey': '-'}
 
+    def typed_key(self, attr):
+        return {'partitionKey': {'S': f'{self.pk_prefix}/{attr}'}, 'sortKey': {'S': '-'}}
+
     def get(self, attr, strongly_consistent=False):
         return self.client.get_item(self.key(attr), ConsistentRead=strongly_consistent)
+
+    def batch_get_user_ids(self, attrs):
+        if not attrs:
+            return []
+        typed_keys = [self.typed_key(attr) for attr in attrs]
+        items = self.client.batch_get_items(typed_keys, projection_expression='userId')
+        return [item['userId']['S'] for item in items]
 
     def add(self, attr, user_id):
         item = {
@@ -33,11 +43,3 @@ class UserContactAttributeDynamo:
             'ReturnValues': 'ALL_OLD',
         }
         return self.client.table.delete_item(**kwargs).get('Attributes') or None
-
-    def getBatchItems(self, attrs):
-        values = []
-        for attr in attrs:
-            value = self.client.get_item(self.key(attr))['userId']
-            values.append(value)
-
-        return values

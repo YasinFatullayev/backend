@@ -202,7 +202,22 @@ def test_fire_gql_subscription_chats_with_unviewed_messages_count(user_manager):
 
 
 def test_find_users(user_manager, cognito_client):
+    # Create User who just joined to REAL
     user_id = 'my-user-id'
+    username = 'myusername'
+    email = f'{username}@real.app'
+
+    cognito_client.user_pool_client.admin_create_user(
+        UserPoolId=cognito_client.user_pool_id,
+        Username=user_id,
+        UserAttributes=[
+            {'Name': 'email', 'Value': email},
+            {'Name': 'email_verified', 'Value': 'true'},
+        ],
+    )
+    joinged_user = user_manager.create_cognito_only_user(user_id, username)
+    assert joinged_user.id == user_id
+    assert joinged_user.item['email'] == email
 
     # Create User Only With Email
     user_id1 = 'my-user-id1'
@@ -277,17 +292,17 @@ def test_find_users(user_manager, cognito_client):
 
     # Check with only emails
     emails = [email1, email3]
-    expectedUserList = [user1.item, user3.item]
+    expectedUserList = [user_id1, user_id3]
     userList = user_manager.find_users(user_id, emails=emails)
-    assert userList['items'] == expectedUserList
+    assert userList == expectedUserList
 
     # Check with only phones
     phones = [phone2, phone3]
-    expectedUserList = [user2.item, user3.item]
+    expectedUserList = [user_id2, user_id3]
     userList = user_manager.find_users(user_id, phones=phones)
-    assert userList['items'] == expectedUserList
+    assert userList == expectedUserList
 
     # Check with both emails&phones
-    expectedUserList = [user1.item, user2.item, user3.item]
+    expectedUserList = [user_id1, user_id2, user_id3]
     userList = user_manager.find_users(user_id, emails=emails, phones=phones)
-    assert userList['items'] == expectedUserList
+    assert userList == expectedUserList

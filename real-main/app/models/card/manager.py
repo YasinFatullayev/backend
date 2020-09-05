@@ -213,7 +213,3 @@ class CardManager:
             user_id = new_item['postedByUserId']
             card_template = templates.PostViewsCardTemplate(user_id, post_id)
             self.add_or_update_card(card_template)
-
-    def on_find_follow_user_card(self, user_id, username):
-        card_template = templates.FindFollowsCardTemplate(user_id, username)
-        self.add_or_update_card(card_template)

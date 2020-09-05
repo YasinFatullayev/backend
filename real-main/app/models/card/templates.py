@@ -151,11 +151,11 @@ class FindFollowsCardTemplate(CardTemplate):
     notify_user_after = pendulum.duration(hours=24)
 
     @staticmethod
-    def get_card_id(user_id, username):
-        return f'{user_id}:NEW_FOLLOWER:{username}'
+    def get_card_id(user_id, user_id_joined):
+        return f'{user_id}:NEW_FOLLOWER:{user_id_joined}'
 
-    def __init__(self, user_id, username):
+    def __init__(self, user_id, user_id_joined, username_joined):
         super().__init__(user_id)
-        self.card_id = self.get_card_id(user_id, username)
-        self.action = f'https://real.app/user/{user_id}/'
-        self.title = f'{username} joined REAL'
+        self.card_id = self.get_card_id(user_id, user_id_joined)
+        self.action = f'https://real.app/user/{user_id_joined}/'
+        self.title = f'{username_joined} joined REAL'

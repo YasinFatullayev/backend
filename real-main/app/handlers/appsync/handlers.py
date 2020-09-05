@@ -265,14 +265,10 @@ def finish_change_user_phone_number(caller_user, arguments, **kwargs):
 @validate_caller
 @update_last_client
 def find_users(caller_user_id, arguments, **kwargs):
-    emails = arguments.get('emails')
-    phones = arguments.get('phoneNumbers')
+    emails = arguments['emails'] or []
+    phones = arguments['phoneNumbers'] or []
 
-    args = (
-        emails,
-        phones,
-    )
-    if all(v is None for v in args):
+    if not emails and not phones:
         raise ClientException('Called without any arguments... probably not what you intended?')
     try:
         userList = user_manager.find_users(
