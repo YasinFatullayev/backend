@@ -470,12 +470,12 @@ class UserManager(TrendingManagerMixin, ManagerBase):
 
         # Get Batch Emails
         if emails:
-            batchItemsWithEmail = self.email_dynamo.getBatchItems(emails)
+            batchItemsWithEmail = self.email_dynamo.batch_get_user_ids(emails)
             userIdMergedList = batchItemsWithEmail
 
         # Get Batch Phones
         if phones:
-            batchItemsWithPhone = self.phone_number_dynamo.getBatchItems(phones)
+            batchItemsWithPhone = self.phone_number_dynamo.batch_get_user_ids(phones)
             userIdMergedList = batchItemsWithPhone
 
         # Get Merged&Unique UserIdList
