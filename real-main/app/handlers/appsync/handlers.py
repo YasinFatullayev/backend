@@ -261,7 +261,7 @@ def finish_change_user_phone_number(caller_user, arguments, **kwargs):
     return caller_user.serialize(caller_user.id)
 
 
-@routes.register('Mutation.findUsers')
+@routes.register('Query.findUsers')
 @validate_caller
 @update_last_client
 def find_users(caller_user_id, arguments, **kwargs):

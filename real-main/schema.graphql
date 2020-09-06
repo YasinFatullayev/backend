@@ -83,14 +83,6 @@ type Mutation {
   startChangeUserPhoneNumber(phoneNumber: AWSPhone!): User
   finishChangeUserPhoneNumber(verificationCode: String!): User
 
-  # Find users
-  #   - accepts up to 100 total combined emails and/or phoneNumbers at a time
-  #   - returns a list of users that match one of the given emails or phoneNumbers,
-  #     so up to a max of 100 users will be returned
-  #   - users are not returned in any particular order
-  #   - in the response, PaginatedUsers.nextToken will always be null
-  findUsers(emails: [AWSEmail!], phoneNumbers: [AWSPhone!]): PaginatedUsers!
-
   # Reset the caller's user account to its initial state (primarily for integration testing)
   #   - excluding cognito, all state associated with user is deleted - including followers, others's comments on our posts, etc
   #   - the user's preferred_username in congito will be deleted
