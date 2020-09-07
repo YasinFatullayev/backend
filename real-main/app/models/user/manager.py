@@ -481,7 +481,6 @@ class UserManager(TrendingManagerMixin, ManagerBase):
         users_ids = sorted(user_id_merged_list)
 
         current_user = self.get_user(user_id)
-        current_username = current_user.item['username']
         # Each UserId
         for user_follower_id in users_ids:
             # if not following
@@ -489,7 +488,7 @@ class UserManager(TrendingManagerMixin, ManagerBase):
                 card_template = templates.FindFollowsCardTemplate(
                     user_id=user_follower_id,
                     user_id_joined=user_id,
-                    username_joined=current_username,
+                    username_joined=current_user.username,
                 )
                 self.card_manager.add_or_update_card(card_template)
 

@@ -21,8 +21,6 @@ class UserContactAttributeDynamo:
         return self.client.get_item(self.key(attr), ConsistentRead=strongly_consistent)
 
     def batch_get_user_ids(self, attrs):
-        if not attrs:
-            return []
         typed_keys = [self.typed_key(attr) for attr in attrs]
         items = self.client.batch_get_items(typed_keys, projection_expression='userId')
         return [item['userId']['S'] for item in items]
