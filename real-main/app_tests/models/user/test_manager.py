@@ -240,8 +240,7 @@ def test_find_users(user_manager, cognito_client):
     assert user1.item['email'] == email1
 
     # Add first user to dynamo_contact_attribute with email
-    new_item = {**user1.item}
-    user_manager.on_user_email_change_update_subitem(user_id=user_id1, new_item=new_item)
+    user_manager.on_user_email_change_update_subitem(user_id1, new_item=user1.item)
 
     # Create User Only With Phone
     user_id2 = 'my-user-id2'
@@ -261,8 +260,7 @@ def test_find_users(user_manager, cognito_client):
     assert user2.item['phoneNumber'] == phone2
 
     # Add second user to dynamo_contact_attribute with phone
-    new_item = {**user2.item}
-    user_manager.on_user_phone_number_change_update_subitem(user_id=user_id2, new_item=new_item)
+    user_manager.on_user_phone_number_change_update_subitem(user_id2, new_item=user2.item)
 
     # Create User with both email&phone
     user_id3 = 'my-user-id3'
@@ -284,11 +282,10 @@ def test_find_users(user_manager, cognito_client):
     assert user3.id == user_id3
     assert user3.item['email'] == email3
     assert user3.item['phoneNumber'] == phone3
-    # Add third user to dynamo_contact_attribute with email and phone
 
-    new_item = {**user3.item}
-    user_manager.on_user_email_change_update_subitem(user_id=user_id3, new_item=new_item)
-    user_manager.on_user_phone_number_change_update_subitem(user_id=user_id3, new_item=new_item)
+    # Add third user to dynamo_contact_attribute with email and phone
+    user_manager.on_user_email_change_update_subitem(user_id3, new_item=user3.item)
+    user_manager.on_user_phone_number_change_update_subitem(user_id3, new_item=user3.item)
 
     # Create User to check already followed
     user_id4 = 'my-user-id4'
