@@ -202,6 +202,9 @@ def test_fire_gql_subscription_chats_with_unviewed_messages_count(user_manager):
 
 
 def test_find_users(user_manager, cognito_client):
+    follower_manager = user_manager.follower_manager
+    card_manager = user_manager.card_manager
+
     # Create User who just joined to REAL
     user_id = 'my-user-id'
     username = 'myusername'
@@ -287,22 +290,66 @@ def test_find_users(user_manager, cognito_client):
     user_manager.on_user_email_change_update_subitem(user_id=user_id3, new_item=new_item)
     user_manager.on_user_phone_number_change_update_subitem(user_id=user_id3, new_item=new_item)
 
+    # Create User to check already followed
+    user_id4 = 'my-user-id4'
+    username4 = 'myusername4'
+    email4 = f'{username4}@real.app'
+
+    cognito_client.user_pool_client.admin_create_user(
+        UserPoolId=cognito_client.user_pool_id,
+        Username=user_id4,
+        UserAttributes=[
+            {'Name': 'email', 'Value': email4},
+            {'Name': 'email_verified', 'Value': 'true'},
+        ],
+    )
+    user4 = user_manager.create_cognito_only_user(user_id4, username4)
+    assert user4.id == user_id4
+    assert user4.item['email'] == email4
+
+    # Add first user to dynamo_contact_attribute with email
+    new_item = {**user4.item}
+    user_manager.on_user_email_change_update_subitem(user_id=user_id4, new_item=new_item)
+
     # Check with None
-    assert user_manager.find_users(user_id) == []
+    assert user_manager.find_users(joinged_user) == []
 
     # Check with only emails
     emails = [email1, email3]
     expectedUserList = [user_id1, user_id3]
-    userList = user_manager.find_users(user_id, emails=emails)
+    userList = user_manager.find_users(joinged_user, emails=emails)
     assert userList == expectedUserList
 
     # Check with only phones
     phones = [phone2, phone3]
     expectedUserList = [user_id2, user_id3]
-    userList = user_manager.find_users(user_id, phones=phones)
+    userList = user_manager.find_users(joinged_user, phones=phones)
     assert userList == expectedUserList
 
+    # Check Non-Exist card Id
+    card_id = f'{user_id2}aaa:NEW_FOLLOWER:{user_id}'
+    card_template = card_manager.get_card(card_id)
+    assert card_template is None
+
+    # Check New Follower Card Ids.
+    card_id1 = f'{user_id2}:NEW_FOLLOWER:{user_id}'
+    card1 = card_manager.get_card(card_id1)
+    assert card1.id == card_id1
+
+    card_id2 = f'{user_id3}:NEW_FOLLOWER:{user_id}'
+    card2 = card_manager.get_card(card_id2)
+    assert card2.id == card_id2
+
+    # With already Followed
+    follower_manager.request_to_follow(user4, joinged_user)
+
     # Check with both emails&phones
-    expectedUserList = [user_id1, user_id2, user_id3]
-    userList = user_manager.find_users(user_id, emails=emails, phones=phones)
+    emails = [email1, email3, email4]
+    expectedUserList = [user_id1, user_id2, user_id3, user_id4]
+    userList = user_manager.find_users(joinged_user, emails=emails, phones=phones)
     assert userList == expectedUserList
+
+    # Check card_template is None which already followed
+    card_id4 = f'{user_id4}:NEW_FOLLOWER:{user_id}'
+    card_template4 = card_manager.get_card(card_id4)
+    assert card_template4 is None

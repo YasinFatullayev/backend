@@ -464,7 +464,7 @@ class UserManager(TrendingManagerMixin, ManagerBase):
             # TODO: catch 404 error & log warning
             self.cognito_client.delete_identity_pool_entry(user_id)
 
-    def find_users(self, user_id, emails=None, phones=None):
+    def find_users(self, caller_user, emails=None, phones=None):
         emails = emails or []
         phones = phones or []
 
@@ -480,16 +480,19 @@ class UserManager(TrendingManagerMixin, ManagerBase):
         # Sort the user_ids
         users_ids = sorted(user_id_merged_list)
 
-        current_user = self.get_user(user_id)
-        current_username = current_user.item['username']
+        caller_userid = caller_user.item['userId']
+        caller_username = caller_user.item['username']
         # Each UserId
         for user_follower_id in users_ids:
             # if not following
-            if self.follower_manager.get_follow_status(user_follower_id, user_id) == FollowStatus.NOT_FOLLOWING:
+            if (
+                self.follower_manager.get_follow_status(user_follower_id, caller_userid)
+                == FollowStatus.NOT_FOLLOWING
+            ):
                 card_template = templates.FindFollowsCardTemplate(
                     user_id=user_follower_id,
-                    user_id_joined=user_id,
-                    username_joined=current_username,
+                    user_id_joined=caller_userid,
+                    username_joined=caller_username,
                 )
                 self.card_manager.add_or_update_card(card_template)
 

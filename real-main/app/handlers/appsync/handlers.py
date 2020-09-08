@@ -264,21 +264,19 @@ def finish_change_user_phone_number(caller_user, arguments, **kwargs):
 @routes.register('Query.findUsers')
 @validate_caller
 @update_last_client
-def find_users(caller_user_id, arguments, **kwargs):
+def find_users(caller_user, arguments, **kwargs):
     emails = arguments['emails'] or []
     phones = arguments['phoneNumbers'] or []
 
     if not emails and not phones:
         raise ClientException('Called without any arguments... probably not what you intended?')
-    try:
-        userList = user_manager.find_users(
-            user_id=caller_user_id,
-            emails=emails,
-            phones=phones,
-        )
-    except UserException as err:
-        raise ClientException(str(err)) from err
-    return userList
+
+    user_ids = user_manager.find_users(
+        caller_user,
+        emails=emails,
+        phones=phones,
+    )
+    return user_ids
 
 
 @routes.register('Mutation.setUserDetails')
