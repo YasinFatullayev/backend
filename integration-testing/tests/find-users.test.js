@@ -134,8 +134,7 @@ test('Find Users and test with cards', async () => {
     username: other2Username,
   } = await loginCache.getCleanLogin()
 
-  const randomId = uuidv4()
-  const randomEmail = `${randomId}@real.app`
+  const randomEmail = `${uuidv4()}@real.app`
 
   // how each user will appear in search results, based on our query
   const us = {__typename: 'User', userId: ourUserId, username: ourUsername}
@@ -143,70 +142,67 @@ test('Find Users and test with cards', async () => {
   const other1 = {__typename: 'User', userId: other1UserId, username: other1Username}
   const other2 = {__typename: 'User', userId: other2UserId, username: other2Username}
 
-  // find One Users
+  // find One User
   await misc.sleep(2000)
   await ourClient
     .query({query: queries.findUsers, variables: {emails: [other1Email, randomEmail]}})
-    .then(async ({data: {findUsers}}) => {
+    .then(({data: {findUsers}}) => {
       // check with findusers
       expect(findUsers.items[0]).toEqual(other1)
-
-      // check not-called user has no card
-      await secondClient.query({query: queries.self}).then(({data}) => {
-        expect(data.self.userId).toBe(other2UserId)
-        expect(data.self.cardCount).toBe(0)
-      })
-
-      // check called user has card
-      const cardId = await firstClient.query({query: queries.self}).then(({data}) => {
-        expect(data.self.userId).toBe(other1UserId)
-        expect(data.self.cardCount).toBe(0)
-        const card = data.self.cards.items[0]
-        expect(card.title).toBe(`${ourUsername} joined REAL`)
-        expect(card.cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${ourUserId}`)
-        return card.cardId
-      })
-
-      // dismiss the card
-      await firstClient
-        .mutate({mutation: mutations.deleteCard, variables: {cardId}})
-        .then(({data}) => expect(data.deleteCard.cardId).toBe(cardId))
     })
 
-  // find different Users
+  // check not-called user has no card
+  await secondClient.query({query: queries.self}).then(({data}) => {
+    expect(data.self.userId).toBe(other2UserId)
+    expect(data.self.cardCount).toBe(0)
+  })
+
+  // check called user has card
+  const cardId = await firstClient.query({query: queries.self}).then(({data}) => {
+    expect(data.self.userId).toBe(other1UserId)
+    expect(data.self.cardCount).toBe(1)
+    const card = data.self.cards.items[0]
+    expect(card.title).toBe(`${ourUsername} joined REAL`)
+    expect(card.cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${ourUserId}`)
+    return card.cardId
+  })
+
+  // dismiss the card
+  await firstClient
+    .mutate({mutation: mutations.deleteCard, variables: {cardId}})
+    .then(({data}) => expect(data.deleteCard.cardId).toBe(cardId))
+
+  // find different Users with new user
   await ourClient
     .query({query: queries.findUsers, variables: {emails: [ourEmail, other1Email, other2Email]}})
-    .then(async ({data: {findUsers}}) => {
+    .then(({data: {findUsers}}) => {
       expect(findUsers.items).toBe([us, other1, other2])
-
-      // Check called user has card
-      await firstClient.query({query: queries.self}).then(({data}) => {
-        expect(data.self.userId).toBe(other1UserId)
-        const card = data.self.cards.items[0]
-        expect(card.cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${ourUserId}`)
-      })
-      await secondClient.query({query: queries.self}).then(({data}) => {
-        expect(data.self.userId).toBe(other2UserId)
-        const card = data.self.cards.items[0]
-        expect(card.cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${ourUserId}`)
-      })
     })
+  // check first called user has card
+  await firstClient.query({query: queries.self}).then(({data}) => {
+    expect(data.self.userId).toBe(other1UserId)
+    expect(data.self.cards.items[0].cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${ourUserId}`)
+  })
+  // check second called user has card
+  await secondClient.query({query: queries.self}).then(({data}) => {
+    expect(data.self.userId).toBe(other2UserId)
+    expect(data.self.cards.items[0].cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${ourUserId}`)
+  })
 
+  // find different Users with other new user
   await otherClient
     .query({query: queries.findUsers, variables: {emails: [otherEmail, other1Email, other2Email]}})
-    .then(async ({data: {findUsers}}) => {
+    .then(({data: {findUsers}}) => {
       expect(findUsers.items).toBe([other, other1, other2])
-
-      // Check called user has card
-      await firstClient.query({query: queries.self}).then(({data}) => {
-        expect(data.self.userId).toBe(other1UserId)
-        const card = data.self.cards.items[0]
-        expect(card.cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${otherUserId}`)
-      })
-      await secondClient.query({query: queries.self}).then(({data}) => {
-        expect(data.self.userId).toBe(other2UserId)
-        const card = data.self.cards.items[0]
-        expect(card.cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${otherUserId}`)
-      })
     })
+  // check first called user has card
+  await firstClient.query({query: queries.self}).then(({data}) => {
+    expect(data.self.userId).toBe(other1UserId)
+    expect(data.self.cards.items[0].cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${otherUserId}`)
+  })
+  // check second called user has card
+  await secondClient.query({query: queries.self}).then(({data}) => {
+    expect(data.self.userId).toBe(other2UserId)
+    expect(data.self.cards.items[0].cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${otherUserId}`)
+  })
 })
