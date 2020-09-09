@@ -9,7 +9,7 @@ import pendulum
 from app import models
 from app.mixins.base import ManagerBase
 from app.mixins.trending.manager import TrendingManagerMixin
-from app.models.card import templates
+from app.models.card.templates import FindFollowsCardTemplate
 from app.models.follower.enums import FollowStatus
 from app.models.post.enums import PostStatus
 from app.utils import GqlNotificationType
@@ -489,7 +489,7 @@ class UserManager(TrendingManagerMixin, ManagerBase):
                 self.follower_manager.get_follow_status(user_follower_id, caller_userid)
                 == FollowStatus.NOT_FOLLOWING
             ):
-                card_template = templates.FindFollowsCardTemplate(
+                card_template = FindFollowsCardTemplate(
                     user_id=user_follower_id,
                     user_id_joined=caller_userid,
                     username_joined=caller_username,

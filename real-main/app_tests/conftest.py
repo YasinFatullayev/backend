@@ -124,6 +124,11 @@ def dynamo_feed_client(dynamo_clients):
 
 
 @pytest.fixture
+def dynamo_table(dynamo_clients):
+    yield dynamo_clients[0].table
+
+
+@pytest.fixture
 def elasticsearch_client():
     yield mock.Mock(clients.ElasticSearchClient(domain='my-es-domain.com'))
 

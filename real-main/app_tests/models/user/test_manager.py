@@ -16,9 +16,40 @@ def cognito_only_user(user_manager, cognito_client):
     yield user_manager.create_cognito_only_user(user_id, username)
 
 
+@pytest.fixture
+def user_with_phone(dynamo_table):
+    user_id = str(uuid.uuid4())
+    item = {
+        'partitionKey': f'user/{user_id}',
+        'sortKey': 'profile',
+        'schemaVersion': 8,
+        'userId': user_id,
+        'phoneNumber': '+12125551212',
+    }
+    dynamo_table.put_item(Item=item)
+    yield item
+
+
+@pytest.fixture
+def user_with_phone_and_email(dynamo_table):
+    user_id = str(uuid.uuid4())
+    item = {
+        'partitionKey': f'user/{user_id}',
+        'sortKey': 'profile',
+        'schemaVersion': 8,
+        'userId': user_id,
+        'email': 'another-user-with-email-test@real.app',
+        'phoneNumber': '+14155551212',
+    }
+    dynamo_table.put_item(Item=item)
+    yield item
+
+
 user1 = cognito_only_user
 user2 = cognito_only_user
 user3 = cognito_only_user
+user4 = user_with_phone
+user5 = user_with_phone_and_email
 
 
 @pytest.fixture
@@ -201,152 +232,81 @@ def test_fire_gql_subscription_chats_with_unviewed_messages_count(user_manager):
     )
 
 
-def test_find_users(user_manager, cognito_client):
+def test_find_user_finds_correct_users(user_manager, user1, user2, user4, user5):
+    # Add users to dynamo_contact_attribute with email
+    user_manager.on_user_email_change_update_subitem(user2.item['userId'], new_item=user2.item)
+    # Add users to dynamo_contact_attribute with phone
+    user_manager.on_user_phone_number_change_update_subitem(user4['userId'], new_item=user4)
+    # Add users to dynamo_contact_attribute with email&phone
+    user_manager.on_user_email_change_update_subitem(user5['userId'], new_item=user5)
+    user_manager.on_user_phone_number_change_update_subitem(user5['userId'], new_item=user5)
+
+    # Check with None
+    assert user_manager.find_users(user1) == []
+
+    # Check with only emails
+    emails = [user2.item['email'], user5['email']]
+    expected_user_list = sorted([user2.item['userId'], user5['userId']])
+    user_list = user_manager.find_users(user1, emails=emails)
+    assert user_list == expected_user_list
+
+    # Check with only phones
+    phones = [user4['phoneNumber'], user5['phoneNumber']]
+    expected_user_list = sorted([user4['userId'], user5['userId']])
+    user_list = user_manager.find_users(user1, phones=phones)
+    assert user_list == expected_user_list
+
+    # Check with phones&emails
+    emails = [user2.item['email'], user5['email']]
+    phones = [user4['phoneNumber'], user5['phoneNumber']]
+    expected_user_list = sorted([user2.item['userId'], user4['userId'], user5['userId']])
+    user_list = user_manager.find_users(user1, emails=emails, phones=phones)
+    assert user_list == expected_user_list
+
+
+def test_find_user_add_cards_for_found_users(user_manager, user1, user2, user3, user5):
     follower_manager = user_manager.follower_manager
     card_manager = user_manager.card_manager
 
-    # Create User who just joined to REAL
-    user_id = 'my-user-id'
-    username = 'myusername'
-    email = f'{username}@real.app'
+    user_id1 = user1.item['userId']
+    user_id2 = user2.item['userId']
+    user_id3 = user3.item['userId']
+    user_id5 = user5['userId']
 
-    cognito_client.user_pool_client.admin_create_user(
-        UserPoolId=cognito_client.user_pool_id,
-        Username=user_id,
-        UserAttributes=[
-            {'Name': 'email', 'Value': email},
-            {'Name': 'email_verified', 'Value': 'true'},
-        ],
-    )
-    joinged_user = user_manager.create_cognito_only_user(user_id, username)
-    assert joinged_user.id == user_id
-    assert joinged_user.item['email'] == email
-
-    # Create User Only With Email
-    user_id1 = 'my-user-id1'
-    username1 = 'myusername1'
-    email1 = f'{username1}@real.app'
-
-    cognito_client.user_pool_client.admin_create_user(
-        UserPoolId=cognito_client.user_pool_id,
-        Username=user_id1,
-        UserAttributes=[
-            {'Name': 'email', 'Value': email1},
-            {'Name': 'email_verified', 'Value': 'true'},
-        ],
-    )
-    user1 = user_manager.create_cognito_only_user(user_id1, username1)
-    assert user1.id == user_id1
-    assert user1.item['email'] == email1
-
-    # Add first user to dynamo_contact_attribute with email
-    user_manager.on_user_email_change_update_subitem(user_id1, new_item=user1.item)
-
-    # Create User Only With Phone
-    user_id2 = 'my-user-id2'
-    username2 = 'myusername2'
-    phone2 = '+1234-567-8900'
-
-    cognito_client.user_pool_client.admin_create_user(
-        UserPoolId=cognito_client.user_pool_id,
-        Username=user_id2,
-        UserAttributes=[
-            {'Name': 'phone_number', 'Value': phone2},
-            {'Name': 'phone_number_verified', 'Value': 'true'},
-        ],
-    )
-    user2 = user_manager.create_cognito_only_user(user_id2, username2)
-    assert user2.id == user_id2
-    assert user2.item['phoneNumber'] == phone2
-
-    # Add second user to dynamo_contact_attribute with phone
-    user_manager.on_user_phone_number_change_update_subitem(user_id2, new_item=user2.item)
-
-    # Create User with both email&phone
-    user_id3 = 'my-user-id3'
-    username3 = 'myusername3'
-    email3 = f'{username3}@real.app'
-    phone3 = '+1234-567-8901'
-
-    cognito_client.user_pool_client.admin_create_user(
-        UserPoolId=cognito_client.user_pool_id,
-        Username=user_id3,
-        UserAttributes=[
-            {'Name': 'email', 'Value': email3},
-            {'Name': 'email_verified', 'Value': 'true'},
-            {'Name': 'phone_number', 'Value': phone3},
-            {'Name': 'phone_number_verified', 'Value': 'true'},
-        ],
-    )
-    user3 = user_manager.create_cognito_only_user(user_id3, username3)
-    assert user3.id == user_id3
-    assert user3.item['email'] == email3
-    assert user3.item['phoneNumber'] == phone3
-
-    # Add third user to dynamo_contact_attribute with email and phone
+    # Add users to dynamo_contact_attribute with email
     user_manager.on_user_email_change_update_subitem(user_id3, new_item=user3.item)
-    user_manager.on_user_phone_number_change_update_subitem(user_id3, new_item=user3.item)
-
-    # Create User to check already followed
-    user_id4 = 'my-user-id4'
-    username4 = 'myusername4'
-    email4 = f'{username4}@real.app'
-
-    cognito_client.user_pool_client.admin_create_user(
-        UserPoolId=cognito_client.user_pool_id,
-        Username=user_id4,
-        UserAttributes=[
-            {'Name': 'email', 'Value': email4},
-            {'Name': 'email_verified', 'Value': 'true'},
-        ],
-    )
-    user4 = user_manager.create_cognito_only_user(user_id4, username4)
-    assert user4.id == user_id4
-    assert user4.item['email'] == email4
-
-    # Add first user to dynamo_contact_attribute with email
-    new_item = {**user4.item}
-    user_manager.on_user_email_change_update_subitem(user_id=user_id4, new_item=new_item)
-
-    # Check with None
-    assert user_manager.find_users(joinged_user) == []
+    user_manager.on_user_email_change_update_subitem(user_id5, new_item=user5)
 
     # Check with only emails
-    emails = [email1, email3]
-    expectedUserList = [user_id1, user_id3]
-    userList = user_manager.find_users(joinged_user, emails=emails)
-    assert userList == expectedUserList
-
-    # Check with only phones
-    phones = [phone2, phone3]
-    expectedUserList = [user_id2, user_id3]
-    userList = user_manager.find_users(joinged_user, phones=phones)
-    assert userList == expectedUserList
+    emails = [user3.item['email'], user5['email']]
+    expected_user_list = sorted([user_id3, user_id5])
+    user_list = user_manager.find_users(user1, emails=emails)
+    assert user_list == expected_user_list
 
     # Check Non-Exist card Id
-    card_id = f'{user_id2}aaa:NEW_FOLLOWER:{user_id}'
+    card_id = f'{user_id3}aaa:NEW_FOLLOWER:{user_id1}'
     card_template = card_manager.get_card(card_id)
     assert card_template is None
 
     # Check New Follower Card Ids.
-    card_id1 = f'{user_id2}:NEW_FOLLOWER:{user_id}'
+    card_id1 = f'{user_id3}:NEW_FOLLOWER:{user_id1}'
     card1 = card_manager.get_card(card_id1)
     assert card1.id == card_id1
 
-    card_id2 = f'{user_id3}:NEW_FOLLOWER:{user_id}'
+    card_id2 = f'{user_id5}:NEW_FOLLOWER:{user_id1}'
     card2 = card_manager.get_card(card_id2)
     assert card2.id == card_id2
 
     # With already Followed
-    follower_manager.request_to_follow(user4, joinged_user)
+    follower_manager.request_to_follow(user3, user2)
 
-    # Check with both emails&phones
-    emails = [email1, email3, email4]
-    expectedUserList = [user_id1, user_id2, user_id3, user_id4]
-    userList = user_manager.find_users(joinged_user, emails=emails, phones=phones)
-    assert userList == expectedUserList
+    # Check with only emails
+    emails = [user3.item['email'], user5['email']]
+    expected_user_list = sorted([user_id3, user_id5])
+    user_list = user_manager.find_users(user2, emails=emails)
+    assert user_list == expected_user_list
 
     # Check card_template is None which already followed
-    card_id4 = f'{user_id4}:NEW_FOLLOWER:{user_id}'
-    card_template4 = card_manager.get_card(card_id4)
-    assert card_template4 is None
+    card_id3 = f'{user_id3}:NEW_FOLLOWER:{user_id2}'
+    card_template3 = card_manager.get_card(card_id3)
+    assert card_template3 is None
