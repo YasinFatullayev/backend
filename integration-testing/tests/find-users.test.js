@@ -105,7 +105,7 @@ test('Find users by phone, and by phone and email', async () => {
     .then(({data: {findUsers}}) => expect(findUsers.items.sort(cmp)).toEqual([us, them].sort(cmp)))
 })
 
-test('Find Users and test with cards', async () => {
+test('Find Users sends cards to the users that were found', async () => {
   const {
     client: ourClient,
     userId: ourUserId,
@@ -113,34 +113,13 @@ test('Find Users and test with cards', async () => {
     username: ourUsername,
   } = await loginCache.getCleanLogin()
 
-  const {
-    client: otherClient,
-    userId: otherUserId,
-    email: otherEmail,
-    username: otherUsername,
-  } = await loginCache.getCleanLogin()
+  const {client: otherClient, userId: otherUserId, email: otherEmail} = await loginCache.getCleanLogin()
 
-  const {
-    client: firstClient,
-    userId: other1UserId,
-    email: other1Email,
-    username: other1Username,
-  } = await loginCache.getCleanLogin()
+  const {client: firstClient, userId: other1UserId, email: other1Email} = await loginCache.getCleanLogin()
 
-  const {
-    client: secondClient,
-    userId: other2UserId,
-    email: other2Email,
-    username: other2Username,
-  } = await loginCache.getCleanLogin()
+  const {client: secondClient, userId: other2UserId, email: other2Email} = await loginCache.getCleanLogin()
 
   const randomEmail = `${uuidv4()}@real.app`
-
-  // how each user will appear in search results, based on our query
-  const us = {__typename: 'User', userId: ourUserId, username: ourUsername}
-  const other = {__typename: 'User', userId: otherUserId, username: otherUsername}
-  const other1 = {__typename: 'User', userId: other1UserId, username: other1Username}
-  const other2 = {__typename: 'User', userId: other2UserId, username: other2Username}
 
   // find One User
   await misc.sleep(2000)
@@ -148,22 +127,24 @@ test('Find Users and test with cards', async () => {
     .query({query: queries.findUsers, variables: {emails: [other1Email, randomEmail]}})
     .then(({data: {findUsers}}) => {
       // check with findusers
-      expect(findUsers.items[0]).toEqual(other1)
+      expect(findUsers.items.map((item) => item.userId)).toBe([other1UserId])
     })
 
   // check not-called user has no card
-  await secondClient.query({query: queries.self}).then(({data}) => {
-    expect(data.self.userId).toBe(other2UserId)
-    expect(data.self.cardCount).toBe(0)
+  await secondClient.query({query: queries.self}).then(({data: {self}}) => {
+    expect(self.userId).toBe(other2UserId)
+    expect(self.cardCount).toBe(0)
   })
 
   // check called user has card
-  const cardId = await firstClient.query({query: queries.self}).then(({data}) => {
-    expect(data.self.userId).toBe(other1UserId)
-    expect(data.self.cardCount).toBe(1)
-    const card = data.self.cards.items[0]
-    expect(card.title).toBe(`${ourUsername} joined REAL`)
+  const cardId = await firstClient.query({query: queries.self}).then(({data: {self}}) => {
+    expect(self.userId).toBe(other1UserId)
+    expect(self.cardCount).toBe(1)
+    const card = self.cards.items[0]
     expect(card.cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${ourUserId}`)
+    expect(card.title).toBe(`${ourUsername} joined REAL`)
+    expect(card.subTitle).toBeNull()
+    expect(card.action).toBe(`https://real.app/user/${ourUserId}`)
     return card.cardId
   })
 
@@ -173,36 +154,42 @@ test('Find Users and test with cards', async () => {
     .then(({data}) => expect(data.deleteCard.cardId).toBe(cardId))
 
   // find different Users with new user
+  await misc.sleep(2000)
   await ourClient
     .query({query: queries.findUsers, variables: {emails: [ourEmail, other1Email, other2Email]}})
     .then(({data: {findUsers}}) => {
-      expect(findUsers.items).toBe([us, other1, other2])
+      expect(findUsers.items.map((item) => item.userId).sort()).toEqual(
+        [ourUserId, other1UserId, other2UserId].sort(),
+      )
     })
   // check first called user has card
-  await firstClient.query({query: queries.self}).then(({data}) => {
-    expect(data.self.userId).toBe(other1UserId)
-    expect(data.self.cards.items[0].cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${ourUserId}`)
+  await firstClient.query({query: queries.self}).then(({data: {self}}) => {
+    expect(self.userId).toBe(other1UserId)
+    expect(self.cards.items[0].cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${ourUserId}`)
   })
   // check second called user has card
-  await secondClient.query({query: queries.self}).then(({data}) => {
-    expect(data.self.userId).toBe(other2UserId)
-    expect(data.self.cards.items[0].cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${ourUserId}`)
+  await secondClient.query({query: queries.self}).then(({data: {self}}) => {
+    expect(self.userId).toBe(other2UserId)
+    expect(self.cards.items[0].cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${ourUserId}`)
   })
 
   // find different Users with other new user
+  await misc.sleep(2000)
   await otherClient
     .query({query: queries.findUsers, variables: {emails: [otherEmail, other1Email, other2Email]}})
     .then(({data: {findUsers}}) => {
-      expect(findUsers.items).toBe([other, other1, other2])
+      expect(findUsers.items.map((item) => item.userId).sort()).toEqual(
+        [otherUserId, other1UserId, other2UserId].sort(),
+      )
     })
   // check first called user has card
-  await firstClient.query({query: queries.self}).then(({data}) => {
-    expect(data.self.userId).toBe(other1UserId)
-    expect(data.self.cards.items[0].cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${otherUserId}`)
+  await firstClient.query({query: queries.self}).then(({data: {self}}) => {
+    expect(self.userId).toBe(other1UserId)
+    expect(self.cards.items[0].cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${otherUserId}`)
   })
   // check second called user has card
-  await secondClient.query({query: queries.self}).then(({data}) => {
-    expect(data.self.userId).toBe(other2UserId)
-    expect(data.self.cards.items[0].cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${otherUserId}`)
+  await secondClient.query({query: queries.self}).then(({data: {self}}) => {
+    expect(self.userId).toBe(other2UserId)
+    expect(self.cards.items[0].cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${otherUserId}`)
   })
 })

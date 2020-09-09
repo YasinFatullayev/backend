@@ -17,39 +17,26 @@ def cognito_only_user(user_manager, cognito_client):
 
 
 @pytest.fixture
-def user_with_phone(dynamo_table):
-    user_id = str(uuid.uuid4())
-    item = {
-        'partitionKey': f'user/{user_id}',
-        'sortKey': 'profile',
-        'schemaVersion': 8,
-        'userId': user_id,
-        'phoneNumber': '+12125551212',
-    }
-    dynamo_table.put_item(Item=item)
-    yield item
+def cognito_only_user_with_phone(user_manager, cognito_client):
+    user_id, username = str(uuid.uuid4()), str(uuid.uuid4())[:8]
+    cognito_client.create_user_pool_entry(user_id, username, verified_phone='+12125551212')
+    yield user_manager.create_cognito_only_user(user_id, username)
 
 
 @pytest.fixture
-def user_with_phone_and_email(dynamo_table):
-    user_id = str(uuid.uuid4())
-    item = {
-        'partitionKey': f'user/{user_id}',
-        'sortKey': 'profile',
-        'schemaVersion': 8,
-        'userId': user_id,
-        'email': 'another-user-with-email-test@real.app',
-        'phoneNumber': '+14155551212',
-    }
-    dynamo_table.put_item(Item=item)
-    yield item
+def cognito_only_user_with_email_and_phone(user_manager, cognito_client):
+    user_id, username = str(uuid.uuid4()), str(uuid.uuid4())[:8]
+    cognito_client.create_user_pool_entry(
+        user_id, username, verified_email=f'{username}@real.app', verified_phone='+12125551212'
+    )
+    yield user_manager.create_cognito_only_user(user_id, username)
 
 
 user1 = cognito_only_user
 user2 = cognito_only_user
 user3 = cognito_only_user
-user4 = user_with_phone
-user5 = user_with_phone_and_email
+user4 = cognito_only_user_with_phone
+user5 = cognito_only_user_with_email_and_phone
 
 
 @pytest.fixture
@@ -236,30 +223,30 @@ def test_find_user_finds_correct_users(user_manager, user1, user2, user4, user5)
     # Add users to dynamo_contact_attribute with email
     user_manager.on_user_email_change_update_subitem(user2.item['userId'], new_item=user2.item)
     # Add users to dynamo_contact_attribute with phone
-    user_manager.on_user_phone_number_change_update_subitem(user4['userId'], new_item=user4)
+    user_manager.on_user_phone_number_change_update_subitem(user4.item['userId'], new_item=user4.item)
     # Add users to dynamo_contact_attribute with email&phone
-    user_manager.on_user_email_change_update_subitem(user5['userId'], new_item=user5)
-    user_manager.on_user_phone_number_change_update_subitem(user5['userId'], new_item=user5)
+    user_manager.on_user_email_change_update_subitem(user5.item['userId'], new_item=user5.item)
+    user_manager.on_user_phone_number_change_update_subitem(user5.item['userId'], new_item=user5.item)
 
     # Check with None
     assert user_manager.find_users(user1) == []
 
     # Check with only emails
-    emails = [user2.item['email'], user5['email']]
-    expected_user_list = sorted([user2.item['userId'], user5['userId']])
+    emails = [user2.item['email'], user5.item['email']]
+    expected_user_list = sorted([user2.item['userId'], user5.item['userId']])
     user_list = user_manager.find_users(user1, emails=emails)
     assert user_list == expected_user_list
 
     # Check with only phones
-    phones = [user4['phoneNumber'], user5['phoneNumber']]
-    expected_user_list = sorted([user4['userId'], user5['userId']])
+    phones = [user4.item['phoneNumber'], user5.item['phoneNumber']]
+    expected_user_list = sorted([user4.item['userId'], user5.item['userId']])
     user_list = user_manager.find_users(user1, phones=phones)
     assert user_list == expected_user_list
 
     # Check with phones&emails
-    emails = [user2.item['email'], user5['email']]
-    phones = [user4['phoneNumber'], user5['phoneNumber']]
-    expected_user_list = sorted([user2.item['userId'], user4['userId'], user5['userId']])
+    emails = [user2.item['email'], user5.item['email']]
+    phones = [user4.item['phoneNumber'], user5.item['phoneNumber']]
+    expected_user_list = sorted([user2.item['userId'], user4.item['userId'], user5.item['userId']])
     user_list = user_manager.find_users(user1, emails=emails, phones=phones)
     assert user_list == expected_user_list
 
@@ -271,14 +258,14 @@ def test_find_user_add_cards_for_found_users(user_manager, user1, user2, user3, 
     user_id1 = user1.item['userId']
     user_id2 = user2.item['userId']
     user_id3 = user3.item['userId']
-    user_id5 = user5['userId']
+    user_id5 = user5.item['userId']
 
     # Add users to dynamo_contact_attribute with email
     user_manager.on_user_email_change_update_subitem(user_id3, new_item=user3.item)
-    user_manager.on_user_email_change_update_subitem(user_id5, new_item=user5)
+    user_manager.on_user_email_change_update_subitem(user_id5, new_item=user5.item)
 
     # Check with only emails
-    emails = [user3.item['email'], user5['email']]
+    emails = [user3.item['email'], user5.item['email']]
     expected_user_list = sorted([user_id3, user_id5])
     user_list = user_manager.find_users(user1, emails=emails)
     assert user_list == expected_user_list
@@ -301,7 +288,7 @@ def test_find_user_add_cards_for_found_users(user_manager, user1, user2, user3, 
     follower_manager.request_to_follow(user3, user2)
 
     # Check with only emails
-    emails = [user3.item['email'], user5['email']]
+    emails = [user3.item['email'], user5.item['email']]
     expected_user_list = sorted([user_id3, user_id5])
     user_list = user_manager.find_users(user2, emails=emails)
     assert user_list == expected_user_list
