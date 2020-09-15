@@ -108,6 +108,11 @@ Resource dependencies between the stacks make initial deployment tricky. Stacks 
   - the `AWS::Logs::MetricFilter`s and `AWS::CloudWatch::Alarm` that depend on a AppSync GraphQL LogGroup
 - `real-cloudfront`
 - `real-main` again, with nothing commented out
+  At this point, before re-deploying `real-main` stack, should delete the previous `real-main` in AWS
+  - The `real-{stage}-main` and `real-{stage}-feed` table with `AWS DynamoDB`
+  - The `real-{stage}-main-uploadsbucket-{AWS Account ID}` and `real-{stage}-main-serverlessdeploymentbucket-{bucketId}` with `AWS S3`
+  - The `real-{stage}-main` stack with `AWS Cloud Formation`
+  - The `real-main-{stage}` APIs with `AWS AppSync`
 - `real-auth`
 
 ### Updates to an existing deployment
