@@ -15,8 +15,9 @@ USER_NOTIFICATIONS_ONLY_USERNAMES = os.environ.get('USER_NOTIFICATIONS_ONLY_USER
 logger = logging.getLogger()
 xray.patch_all()
 
+secrets_manager_client = clients.SecretsManagerClient()
 clients = {
-    'appstore': clients.AppStoreClient(),
+    'appstore': clients.AppStoreClient(secrets_manager_client.get_apple_appstore_params),
     'dynamo': clients.DynamoClient(),
     'cognito': clients.CognitoClient(),
     'pinpoint': clients.PinpointClient(),
@@ -49,6 +50,13 @@ def deflate_trending_posts(event, context):
     deleted_cnt = post_manager.trending_delete_tail(total_cnt)
     with LogLevelContext(logger, logging.INFO):
         logger.info(f'Trending posts removed: {deleted_cnt} out of {total_cnt}')
+
+
+@handler_logging
+def update_appstore_subscriptions(event, context):
+    cnt = appstore_manager.update_subscriptions()
+    with LogLevelContext(logger, logging.INFO):
+        logger.info(f'AppStore subscriptions updated: {cnt}')
 
 
 @handler_logging

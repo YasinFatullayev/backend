@@ -4,6 +4,7 @@ from uuid import uuid4
 import pendulum
 import pytest
 
+from app.mixins.view.enums import ViewType
 from app.models.user.dynamo import UserDynamo
 from app.models.user.enums import UserPrivacyStatus, UserStatus, UserSubscriptionLevel
 from app.models.user.exceptions import UserAlreadyExists, UserAlreadyGrantedSubscription
@@ -571,7 +572,7 @@ def test_grant_and_clear_subscription(user_dynamo):
     # Note that this raises the wrong exception upon user DNE, but this isn't really an issue in
     # the app because when this method is called the user has already been verified to exist.
     with pytest.raises(UserAlreadyGrantedSubscription):
-        user_dynamo.grant_subscription(user_id, UserSubscriptionLevel.DIAMOND, granted_at, expires_at)
+        user_dynamo.update_subscription(user_id, UserSubscriptionLevel.DIAMOND, granted_at, expires_at)
     assert user_dynamo.get_user(user_id) is None
 
     # verify can't clear subscription from user that DNE
@@ -590,16 +591,18 @@ def test_grant_and_clear_subscription(user_dynamo):
 
     # verify we can't grant basic subscriptions
     with pytest.raises(AssertionError, match='BASIC'):
-        user_dynamo.grant_subscription(user_id, UserSubscriptionLevel.BASIC, granted_at, expires_at)
+        user_dynamo.update_subscription(user_id, UserSubscriptionLevel.BASIC, granted_at, expires_at)
     assert user_dynamo.get_user(user_id) == user_item
 
     # verify we can't grant non-expiring subscriptions
-    with pytest.raises(AssertionError, match='must expire'):
-        user_dynamo.grant_subscription(user_id, UserSubscriptionLevel.DIAMOND, granted_at, None)
+    with pytest.raises(AssertionError, match='expire'):
+        user_dynamo.update_subscription(user_id, UserSubscriptionLevel.DIAMOND, granted_at, None)
     assert user_dynamo.get_user(user_id) == user_item
 
     # verify we can do a normal grant
-    new_user_item = user_dynamo.grant_subscription(user_id, UserSubscriptionLevel.DIAMOND, granted_at, expires_at)
+    new_user_item = user_dynamo.update_subscription(
+        user_id, UserSubscriptionLevel.DIAMOND, granted_at, expires_at
+    )
     assert user_dynamo.get_user(user_id) == new_user_item
     assert new_user_item == {
         **user_item,
@@ -613,7 +616,7 @@ def test_grant_and_clear_subscription(user_dynamo):
     # verify we cannot re-grant ourselves more subscription after granting once
     new_expires_at = expires_at + pendulum.duration(days=4)
     with pytest.raises(UserAlreadyGrantedSubscription):
-        user_dynamo.grant_subscription(user_id, UserSubscriptionLevel.DIAMOND, granted_at, new_expires_at)
+        user_dynamo.update_subscription(user_id, UserSubscriptionLevel.DIAMOND, granted_at, new_expires_at)
     assert user_dynamo.get_user(user_id) == new_user_item
 
     # clear the subscription, verify result, verify idempotent
@@ -628,8 +631,43 @@ def test_grant_and_clear_subscription(user_dynamo):
 
     # check that we can't re-grant ourselves another bonus subscription
     with pytest.raises(UserAlreadyGrantedSubscription):
-        user_dynamo.grant_subscription(user_id, UserSubscriptionLevel.DIAMOND, granted_at, new_expires_at)
+        user_dynamo.update_subscription(user_id, UserSubscriptionLevel.DIAMOND, granted_at, new_expires_at)
     assert user_dynamo.get_user(user_id) == new_user_item
+
+
+def test_update_subscription_not_a_grant(user_dynamo):
+    user_id = str(uuid4())
+
+    # Verify can't update subscription for user that DNE
+    # Note that this raises the wrong exception upon user DNE, but this isn't really an issue in
+    # the app because when this method is called the user has already been verified to exist.
+    with pytest.raises(UserAlreadyGrantedSubscription):
+        user_dynamo.update_subscription(user_id, UserSubscriptionLevel.DIAMOND)
+
+    # verify we can't use this to go down to BASIC - use clear_subscription for that
+    with pytest.raises(AssertionError, match='BASIC'):
+        user_dynamo.update_subscription(user_id, UserSubscriptionLevel.BASIC)
+
+    # verify we can't set an expires_at for non-grants: all non-grants auto-renew
+    with pytest.raises(AssertionError, match='expire'):
+        user_dynamo.update_subscription(user_id, UserSubscriptionLevel.DIAMOND, expires_at=pendulum.now('utc'))
+
+    # create the user item
+    user_item = user_dynamo.add_user(user_id, str(uuid4())[:8])
+    assert user_dynamo.get_user(user_id) == user_item
+    assert 'subscriptionLevel' not in user_item
+    assert 'subscriptionGrantedAt' not in user_item
+    assert 'subscriptionExpiresAt' not in user_item
+    assert 'gsiK1PartitionKey' not in user_item
+    assert 'gsiK1SortKey' not in user_item
+
+    # success case
+    user_dynamo.update_subscription(user_id, UserSubscriptionLevel.DIAMOND)
+    assert user_dynamo.get_user(user_id) == {**user_item, 'subscriptionLevel': UserSubscriptionLevel.DIAMOND}
+
+    # check idempotent
+    user_dynamo.update_subscription(user_id, UserSubscriptionLevel.DIAMOND)
+    assert user_dynamo.get_user(user_id) == {**user_item, 'subscriptionLevel': UserSubscriptionLevel.DIAMOND}
 
 
 def test_generate_user_ids_by_subscription_level(user_dynamo):
@@ -646,9 +684,9 @@ def test_generate_user_ids_by_subscription_level(user_dynamo):
     now = pendulum.now('utc')
     expires_at_1 = now + pendulum.duration(hours=1)
     expires_at_2 = now + pendulum.duration(hours=2)
-    user_dynamo.grant_subscription(user_id_1, DIAMOND, now, expires_at_1)
-    user_dynamo.grant_subscription(user_id_2, DIAMOND, now, expires_at_2)
-    user_dynamo.grant_subscription(user_id_3, 'distraction', now, expires_at_1)
+    user_dynamo.update_subscription(user_id_1, DIAMOND, now, expires_at_1)
+    user_dynamo.update_subscription(user_id_2, DIAMOND, now, expires_at_2)
+    user_dynamo.update_subscription(user_id_3, 'distraction', now, expires_at_1)
 
     # test generate none, one, two, all
     generate = user_dynamo.generate_user_ids_by_subscription_level
@@ -660,30 +698,42 @@ def test_generate_user_ids_by_subscription_level(user_dynamo):
     assert list(generate(DIAMOND)) == [user_id_1, user_id_2]
 
 
-def test_update_last_post_view_at(user_dynamo, caplog):
+@pytest.mark.parametrize('view_type', [None, ViewType.THUMBNAIL, ViewType.FOCUS])
+def test_update_last_post_view_at(user_dynamo, caplog, view_type):
     user_id = str(uuid4())
     user_dynamo.add_user(user_id, str(uuid4())[:8])
     assert 'lastPostViewAt' not in user_dynamo.get_user(user_id)
+    assert 'lastPostFocusViewAt' not in user_dynamo.get_user(user_id)
     ms = pendulum.duration(microseconds=1)
 
     # set it without specifying time exactly, verify
-    user_item = user_dynamo.update_last_post_view_at(user_id)
+    user_item = user_dynamo.update_last_post_view_at(user_id, view_type=view_type)
     assert user_dynamo.get_user(user_id) == user_item
     assert 'lastPostViewAt' in user_item
     now = pendulum.parse(user_item['lastPostViewAt'])
+    if view_type == ViewType.FOCUS:
+        assert user_item['lastPostFocusViewAt'] == user_item['lastPostViewAt']
+    else:
+        assert 'lastPostFocusViewAt' not in user_item
 
     # verify can't set it earlier time
     with caplog.at_level(logging.WARNING):
-        user_dynamo.update_last_post_view_at(user_id, now=(now - ms))
+        user_dynamo.update_last_post_view_at(user_id, now=(now - ms), view_type=view_type)
     assert len(caplog.records) == 1
     assert caplog.records[0].levelname == 'WARNING'
     assert all(x in caplog.records[0].msg for x in ['Failed to update lastPostViewAt', user_id])
 
     # verify can set it to a later time
-    user_item = user_dynamo.update_last_post_view_at(user_id, now=(now + ms))
+    user_item = user_dynamo.update_last_post_view_at(user_id, now=(now + ms), view_type=view_type)
     assert user_dynamo.get_user(user_id) == user_item
     assert pendulum.parse(user_item['lastPostViewAt']) == now + ms
+    if view_type == ViewType.FOCUS:
+        assert user_item['lastPostFocusViewAt'] == user_item['lastPostViewAt']
+    else:
+        assert 'lastPostFocusViewAt' not in user_item
 
+
+def test_update_last_post_view_at_user_dne(user_dynamo, caplog):
     # verify setting it on a user that DNE fails softly
     user_id_2 = str(uuid4())
     caplog.clear()

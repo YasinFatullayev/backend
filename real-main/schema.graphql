@@ -25,6 +25,9 @@ type Query {
   #   - not present on all queries that return paginated lists
   ####
 
+  # Check username availability
+  usernameStatus(username: String!): UsernameStatus!
+
   # The caller's user object, or throw an error
   self: User!
 
@@ -214,7 +217,7 @@ type Mutation {
   dislikePost(postId: ID!): Post
 
   # Report post views
-  reportPostViews(postIds: [ID!]!): Boolean
+  reportPostViews(postIds: [ID!]!, viewType: ViewType): Boolean
 
   # Report a notification card was read
   deleteCard(cardId: ID!): Card
@@ -585,6 +588,12 @@ input ChatMessageNotificationInput {
   authorEncoded : String
 }
 
+enum UsernameStatus {
+  AVAILABLE
+  NOT_AVAILABLE
+  INVALID
+}
+
 enum UserStatus {
   ACTIVE
   ANONYMOUS
@@ -651,6 +660,11 @@ enum FlagStatus {
 enum ImageFormat {
   HEIC
   JPEG
+}
+
+enum ViewType {
+  THUMBNAIL
+  FOCUS
 }
 
 input ImageInput {

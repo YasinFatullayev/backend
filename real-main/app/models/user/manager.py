@@ -9,6 +9,7 @@ import pendulum
 from app import models
 from app.mixins.base import ManagerBase
 from app.mixins.trending.manager import TrendingManagerMixin
+from app.models.appstore.enums import AppStoreSubscriptionStatus
 from app.models.card.templates import FindFollowsCardTemplate
 from app.models.follower.enums import FollowStatus
 from app.models.post.enums import PostStatus
@@ -328,19 +329,19 @@ class UserManager(TrendingManagerMixin, ManagerBase):
         user.clear_photo_s3_objects()
         user.trending_delete()
 
-    def sync_user_status_due_to(self, check_method_name, forced_by, user_id, new_item, old_item=None):
+    def on_criteria_sync_user_status(self, check_method_name, forced_by, user_id, new_item, old_item=None):
         user = self.init_user(new_item)
         if getattr(user, check_method_name)():
             user.disable(forced_by=forced_by)
 
-    sync_user_status_due_to_chat_messages = partialmethod(
-        sync_user_status_due_to, 'is_forced_disabling_criteria_met_by_chat_messages', 'chatMessages'
+    on_user_chat_message_forced_deletion_sync_user_status = partialmethod(
+        on_criteria_sync_user_status, 'is_forced_disabling_criteria_met_by_chat_messages', 'chatMessages'
     )
-    sync_user_status_due_to_comments = partialmethod(
-        sync_user_status_due_to, 'is_forced_disabling_criteria_met_by_comments', 'comments'
+    on_user_comment_forced_deletion_sync_user_status = partialmethod(
+        on_criteria_sync_user_status, 'is_forced_disabling_criteria_met_by_comments', 'comments'
     )
-    sync_user_status_due_to_posts = partialmethod(
-        sync_user_status_due_to, 'is_forced_disabling_criteria_met_by_posts', 'posts'
+    on_user_post_forced_archiving_sync_user_status = partialmethod(
+        on_criteria_sync_user_status, 'is_forced_disabling_criteria_met_by_posts', 'posts'
     )
 
     def sync_elasticsearch(self, user_id, new_item, old_item=None):
@@ -497,3 +498,9 @@ class UserManager(TrendingManagerMixin, ManagerBase):
                 self.card_manager.add_or_update_card(card_template)
 
         return users_ids
+
+    def on_appstore_sub_status_change_update_subscription(self, original_transaction_id, new_item, old_item=None):
+        if new_item['status'] == AppStoreSubscriptionStatus.ACTIVE:
+            self.dynamo.update_subscription(new_item['userId'], UserSubscriptionLevel.DIAMOND)
+        else:
+            self.dynamo.clear_subscription(new_item['userId'])
