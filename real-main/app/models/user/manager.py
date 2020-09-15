@@ -504,4 +504,3 @@ class UserManager(TrendingManagerMixin, ManagerBase):
             self.dynamo.update_subscription(new_item['userId'], UserSubscriptionLevel.DIAMOND)
         else:
             self.dynamo.clear_subscription(new_item['userId'])
-
