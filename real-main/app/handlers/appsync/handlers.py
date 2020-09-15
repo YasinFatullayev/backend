@@ -261,24 +261,6 @@ def finish_change_user_phone_number(caller_user, arguments, **kwargs):
     return caller_user.serialize(caller_user.id)
 
 
-@routes.register('Query.findUsers')
-@validate_caller
-@update_last_client
-def find_users(caller_user, arguments, **kwargs):
-    emails = arguments['emails'] or []
-    phones = arguments['phoneNumbers'] or []
-
-    if not emails and not phones:
-        raise ClientException('Called without any arguments... probably not what you intended?')
-
-    user_ids = user_manager.find_users(
-        caller_user,
-        emails=emails,
-        phones=phones,
-    )
-    return user_ids
-
-
 @routes.register('Mutation.setUserDetails')
 @validate_caller
 @update_last_client
@@ -1376,3 +1358,22 @@ def lambda_client_error(caller_user_id, arguments, context=None, event=None, **k
 def lambda_server_error(caller_user_id, arguments, context=None, **kwargs):
     request_id = getattr(context, 'aws_request_id', None)
     raise Exception(f'Test of lambda server error, request `{request_id}`')
+
+
+@routes.register('Query.findUsers')
+@validate_caller
+@update_last_client
+def find_users(caller_user, arguments, **kwargs):
+    emails = arguments['emails'] or []
+    phones = arguments['phoneNumbers'] or []
+
+    if not emails and not phones:
+        raise ClientException('Called without any arguments... probably not what you intended?')
+
+    user_ids = user_manager.find_users(caller_user, emails=emails, phones=phones)
+    user_info_list = []
+
+    for userId in user_ids:
+        user_info = user_manager.get_user(userId)
+        user_info_list.append({'userId': user_info.item['userId'], 'username': user_info.item['username']})
+    return {'items': user_info_list}

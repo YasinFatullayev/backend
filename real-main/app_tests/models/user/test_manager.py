@@ -255,10 +255,10 @@ def test_find_user_add_cards_for_found_users(user_manager, user1, user2, user3, 
     follower_manager = user_manager.follower_manager
     card_manager = user_manager.card_manager
 
-    user_id1 = user1.item['userId']
-    user_id2 = user2.item['userId']
-    user_id3 = user3.item['userId']
-    user_id5 = user5.item['userId']
+    user_id1 = user1.id
+    user_id2 = user2.id
+    user_id3 = user3.id
+    user_id5 = user5.id
 
     # Add users to dynamo_contact_attribute with email
     user_manager.on_user_email_change_update_subitem(user_id3, new_item=user3.item)

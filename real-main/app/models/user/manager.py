@@ -465,8 +465,8 @@ class UserManager(TrendingManagerMixin, ManagerBase):
             self.cognito_client.delete_identity_pool_entry(user_id)
 
     def find_users(self, caller_user, emails=None, phones=None):
-        emails = emails or []
-        phones = phones or []
+        emails = set(emails) if emails else []
+        phones = set(phones) if phones else []
 
         # Get Batch Emails
         batch_items_with_email = self.email_dynamo.batch_get_user_ids(emails)
