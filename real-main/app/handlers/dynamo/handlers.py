@@ -7,7 +7,7 @@ from app import clients, models
 from app.handlers import xray
 from app.logging import LogLevelContext, handler_logging
 from app.models.follower.enums import FollowStatus
-from app.models.user.enums import UserStatus
+from app.models.user.enums import UserStatus, UserSubscriptionLevel
 
 from .dispatch import DynamoDispatch
 
@@ -17,8 +17,9 @@ S3_UPLOADS_BUCKET = os.environ.get('S3_UPLOADS_BUCKET')
 logger = logging.getLogger()
 xray.patch_all()
 
+secrets_manager_client = clients.SecretsManagerClient()
 clients = {
-    'appstore': clients.AppStoreClient(),
+    'appstore': clients.AppStoreClient(secrets_manager_client.get_apple_appstore_params),
     'appsync': clients.AppSyncClient(),
     'cognito': clients.CognitoClient(),
     'dynamo': clients.DynamoClient(),
@@ -30,7 +31,7 @@ clients = {
 
 managers = {}
 album_manager = managers.get('album') or models.AlbumManager(clients, managers=managers)
-appstore_manager = managers.get('appstore_receipt') or models.AppStoreManager(clients, managers=managers)
+appstore_manager = managers.get('appstore') or models.AppStoreManager(clients, managers=managers)
 block_manager = managers.get('block') or models.BlockManager(clients, managers=managers)
 card_manager = managers.get('card') or models.CardManager(clients, managers=managers)
 chat_manager = managers.get('chat') or models.ChatManager(clients, managers=managers)
@@ -61,8 +62,13 @@ register(
 register('album', '-', ['REMOVE'], album_manager.on_album_delete_delete_album_art)
 register('album', '-', ['REMOVE'], post_manager.on_album_delete_remove_posts)
 register('album', '-', ['REMOVE'], user_manager.on_album_delete_update_album_count)
-# TODO: enable once receipt to auto-verify receipts upon upload
-# register('appStoreReceipt', '-', ['INSERT'], appstore_manager.on_receipt_add_verify)
+register(
+    'appStoreSub',
+    '-',
+    ['INSERT', 'MODIFY'],
+    user_manager.on_appstore_sub_status_change_update_subscription,
+    {'status': None},
+)
 register('card', '-', ['INSERT'], card_manager.on_card_add)
 register('card', '-', ['INSERT'], user_manager.on_card_add_increment_count)
 register('card', '-', ['MODIFY'], card_manager.on_card_edit)
@@ -186,6 +192,8 @@ register(
     {'viewCount': 0},
 )
 register('post', 'view', ['INSERT', 'REMOVE'], post_manager.on_post_view_add_delete_sync_viewed_by_counts)
+register('post', 'view', ['INSERT', 'MODIFY'], post_manager.on_post_view_change_update_trending)
+register('user', 'blocker', ['INSERT'], block_manager.on_user_blocked_sync_user_status)
 register(
     'user',
     'follower',
@@ -240,21 +248,21 @@ register(
     'user',
     'profile',
     ['INSERT', 'MODIFY'],
-    user_manager.sync_user_status_due_to_chat_messages,
+    user_manager.on_user_chat_message_forced_deletion_sync_user_status,
     {'chatMessagesForcedDeletionCount': 0},
 )
 register(
     'user',
     'profile',
     ['INSERT', 'MODIFY'],
-    user_manager.sync_user_status_due_to_comments,
+    user_manager.on_user_comment_forced_deletion_sync_user_status,
     {'commentForcedDeletionCount': 0},
 )
 register(
     'user',
     'profile',
     ['INSERT', 'MODIFY'],
-    user_manager.sync_user_status_due_to_posts,
+    user_manager.on_user_post_forced_archiving_sync_user_status,
     {'postForcedArchivingCount': 0},
 )
 register(
@@ -294,8 +302,16 @@ register(
     user_manager.on_user_phone_number_change_update_subitem,
     {'phoneNumber': None},
 )
+register(
+    'user',
+    'profile',
+    ['INSERT', 'MODIFY'],
+    card_manager.on_user_subscription_level_change_update_card,
+    {'subscriptionLevel': UserSubscriptionLevel.BASIC},
+)
+register('user', 'profile', ['INSERT', 'MODIFY'], card_manager.on_user_change_update_photo_card)
 register('user', 'profile', ['REMOVE'], album_manager.on_user_delete_delete_all_by_user)
-register('user', 'profile', ['REMOVE'], appstore_manager.on_user_delete_delete_receipts)
+register('user', 'profile', ['REMOVE'], appstore_manager.on_user_delete_delete_all_by_user)
 register('user', 'profile', ['REMOVE'], block_manager.on_user_delete_unblock_all_blocks)
 register('user', 'profile', ['REMOVE'], card_manager.on_user_delete_delete_cards)
 register('user', 'profile', ['REMOVE'], chat_manager.on_user_delete_delete_flags)
@@ -327,8 +343,7 @@ def process_records(event, context):
         with LogLevelContext(logger, logging.INFO):
             logger.info(f'{name}: `{pk}` / `{sk}` starting processing')
 
-        # we still have some pks in an old (& deprecated) format with more than one item_id in the pk
-        pk_prefix, item_id = pk.split('/')[:2]
+        pk_prefix, item_id = pk.split('/')
         sk_prefix = sk.split('/')[0]
 
         item_kwargs = {k: v for k, v in {'new_item': new_item, 'old_item': old_item}.items() if v}

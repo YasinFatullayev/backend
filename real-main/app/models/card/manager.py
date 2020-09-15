@@ -4,6 +4,7 @@ from functools import partialmethod
 import pendulum
 
 from app import models
+from app.models.user.enums import UserStatus, UserSubscriptionLevel
 
 from . import templates
 from .appsync import CardAppSync
@@ -128,6 +129,39 @@ class CardManager:
         if cnt > 0:
             self.add_or_update_card(card_template)
         else:
+            self.dynamo.delete_card(card_template.card_id)
+
+    def on_user_subscription_level_change_update_card(self, user_id, new_item, old_item=None):
+        new_subscription_level = new_item.get('subscriptionLevel', UserSubscriptionLevel.BASIC)
+        old_subscription_level = (old_item or {}).get('subscriptionLevel', UserSubscriptionLevel.BASIC)
+
+        card_template = templates.UserSubscriptionLevelTemplate(user_id)
+        if (
+            new_subscription_level == UserSubscriptionLevel.DIAMOND
+            and old_subscription_level != UserSubscriptionLevel.DIAMOND
+        ):
+            self.add_or_update_card(card_template)
+        elif (
+            new_subscription_level != UserSubscriptionLevel.DIAMOND
+            and old_subscription_level == UserSubscriptionLevel.DIAMOND
+        ):
+            self.dynamo.delete_card(card_template.card_id)
+
+    def on_user_change_update_photo_card(self, user_id, new_item, old_item=None):
+        new_has_photo = 'photoPostId' in new_item
+        old_has_photo = 'photoPostId' in (old_item or {})
+
+        new_user_status = new_item.get('userStatus', UserStatus.ACTIVE)
+        old_user_status = old_item.get('userStatus', UserStatus.ACTIVE) if old_item else None
+
+        card_template = templates.AddProfilePhotoCardTemplate(user_id)
+        if (
+            not new_has_photo
+            and new_user_status == UserStatus.ACTIVE
+            and old_user_status in (None, UserStatus.ANONYMOUS)
+        ):
+            self.add_or_update_card(card_template)
+        if new_has_photo and not old_has_photo:
             self.dynamo.delete_card(card_template.card_id)
 
     on_user_followers_requested_count_change_sync_card = partialmethod(

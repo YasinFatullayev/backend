@@ -30,3 +30,6 @@ node_modules
 # Vim
 .*.swp
 .*.swo
+
+.vscode/*
+htmlcov

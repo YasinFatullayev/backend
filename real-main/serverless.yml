@@ -44,6 +44,7 @@ provider:
     S3_PLACEHOLDER_PHOTOS_DIRECTORY: 'placeholder-photos'
     S3_UPLOADS_BUCKET: ${self:provider.stackName}-uploadsbucket-#{AWS::AccountId}
 
+    SECRETSMANAGER_APPLE_APPSTORE_PARAMS_NAME: AppleAppstoreParams-1
     SECRETSMANAGER_CLOUDFRONT_KEY_PAIR_NAME: CloudFrontKeyPair-1
     SECRETSMANAGER_POST_VERIFICATION_API_CREDS_NAME: PostVerificationAPICreds-${self:provider.stage}-1
     SECRETSMANAGER_GOOGLE_CLIENT_IDS_NAME: GoogleClientIds-1
@@ -438,6 +439,18 @@ functions:
       - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
     events:
       - schedule: 'rate(1 minute)'
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  updateAppStoreSubscriptions:
+    name: ${self:provider.stackName}-updateAppStoreSubscriptions
+    handler: app.handlers.cron.update_appstore_subscriptions
+    timeout: 900
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: 'rate(1 hour)'
     alarms:
       - functionErrors
       - functionThrottles
