@@ -160,7 +160,7 @@ class FindFollowsCardTemplate(CardTemplate):
         self.action = f'https://real.app/user/{user_id_joined}/'
         self.title = f'{username_joined} joined REAL'
 
-        
+
 class UserSubscriptionLevelTemplate(CardTemplate):
 
     action = 'https://real.app/diamond'
