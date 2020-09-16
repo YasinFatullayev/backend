@@ -1378,4 +1378,8 @@ def find_users(caller_user, arguments, **kwargs):
     for userId in user_ids:
         user_info = user_manager.get_user(userId)
         user_info_list.append({'userId': user_info.item['userId'], 'username': user_info.item['username']})
+
+    # Update lastFoundUsers
+    now = pendulum.now('utc')
+    caller_user.update_last_found_time(now)
     return {'items': user_info_list}

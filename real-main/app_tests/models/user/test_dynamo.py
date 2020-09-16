@@ -790,3 +790,26 @@ def test_add_delete_user_deleted(user_dynamo, caplog):
     new_item = user_dynamo.add_user_deleted(user_id, now=deleted_at)
     assert user_dynamo.client.get_item(key) == new_item
     assert new_item == user_deleted_item
+
+
+def test_set_user_last_found_time(user_dynamo):
+    user_id = 'my-user-id'
+    username = 'my-username'
+    now = pendulum.now('utc')
+
+    user_dynamo.add_user('other-id-1', 'noise-1', 'cog-noise-1')
+    expected_base_item = user_dynamo.add_user(user_id, username)
+    assert expected_base_item['userId'] == user_id
+
+    # Check set_user_last_found_time without Specific Time
+    before = pendulum.now('utc')
+    resp = user_dynamo.set_user_last_found_time(user_id)
+    after = pendulum.now('utc')
+
+    assert before < pendulum.parse(resp['lastFoundUsers']) < after
+
+    # Check set_user_last_found_time with Specific Time
+    resp = user_dynamo.set_user_last_found_time(user_id, now)
+    current_time = now.to_iso8601_string()
+
+    assert current_time == resp['lastFoundUsers']

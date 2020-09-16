@@ -346,7 +346,7 @@ custom:
         pattern: 'ERROR'
 
 resources:
-  - ${file(./serverless/resources/cloud-watch.yml)}
+  # - ${file(./serverless/resources/cloud-watch.yml)}
   - ${file(./serverless/resources/cognito.yml)}
   - ${file(./serverless/resources/dynamo.yml)}
   - ${file(./serverless/resources/elastic-search.yml)}

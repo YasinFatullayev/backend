@@ -408,3 +408,8 @@ class User(TrendingModelMixin):
             self.id, UserSubscriptionLevel.DIAMOND, granted_at=now, expires_at=expires_at
         )
         return self
+
+    def update_last_found_time(self, now=None):
+        now = now or pendulum.now('utc')
+        self.dynamo.set_user_last_found_time(self.id, now)
+        return self

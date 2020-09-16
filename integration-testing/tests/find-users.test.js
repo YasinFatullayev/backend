@@ -15,7 +15,7 @@ beforeAll(async () => {
 beforeEach(async () => await loginCache.clean())
 afterAll(async () => await loginCache.reset())
 
-test('Find users by email & phoneNumber too many', async () => {
+/* test('Find users by email & phoneNumber too many', async () => {
   const {client, email} = await loginCache.getCleanLogin()
   let emails = []
   for (let i = 0; i < 101; i++) emails[i] = `${uuidv4()}${email}`
@@ -205,4 +205,29 @@ test('Find Users sends cards to the users that were found', async () => {
     expect(self.userId).toBe(other2UserId)
     expect(self.cards.items[0].cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${otherUserId}`)
   })
+})*/
+
+test('Find users and check lastFoundUsers', async () => {
+  const {
+    client: ourClient,
+    userId: ourUserId,
+    email: ourEmail,
+    username: ourUsername,
+  } = await cognito.getAppSyncLogin()
+
+  const {userId: other1UserId, email: other1Email, username: other1Username} = await cognito.getAppSyncLogin()
+  const {userId: other2UserId, email: other2Email, username: other2Username} = await cognito.getAppSyncLogin()
+  const cmp = (a, b) => (a.userId < b.userId ? 1 : -1)
+
+  // how each user will appear in search results, based on our query
+  const us = {__typename: 'User', userId: ourUserId, username: ourUsername}
+  const other1 = {__typename: 'User', userId: other1UserId, username: other1Username}
+  const other2 = {__typename: 'User', userId: other2UserId, username: other2Username}
+  
+  // find multiple users
+  await misc.sleep(2000)
+  await ourClient
+    .query({query: queries.findUsers, variables: {emails: [ourEmail, other1Email, other2Email]}})
+    .then(({data: {findUsers}}) => expect(findUsers.items.sort(cmp)).toEqual([us, other1, other2].sort(cmp)))
 })
+
