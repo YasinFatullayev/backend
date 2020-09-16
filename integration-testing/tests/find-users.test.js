@@ -58,7 +58,7 @@ test('Find users by email', async () => {
 
   // find no users
   await expect(ourClient.query({query: queries.findUsers})).rejects.toThrow(
-    'GraphQL error: ClientError: Called without any arguments... probably not what you intended?',
+    /Called without any arguments... probably not what you intended?/,
   )
   await misc.sleep(2000)
   await ourClient
