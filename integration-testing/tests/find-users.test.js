@@ -176,7 +176,6 @@ test('Find Users sends cards to the users that were found', async () => {
   })
 
   // find different Users with other new user
-  await misc.sleep(2000)
   await otherClient
     .query({query: queries.findUsers, variables: {emails: [otherEmail, other1Email, other2Email]}})
     .then(({data: {findUsers}}) => {
@@ -185,6 +184,7 @@ test('Find Users sends cards to the users that were found', async () => {
       )
     })
   // check first called user has card
+  await misc.sleep(2000)
   await other1Client.query({query: queries.self}).then(({data: {self}}) => {
     expect(self.userId).toBe(other1UserId)
     expect(self.cards.items[0].cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${otherUserId}`)
