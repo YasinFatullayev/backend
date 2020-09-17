@@ -181,5 +181,6 @@ module.exports.simpleUserFields = gql`
     userStatus
     subscriptionLevel
     subscriptionExpiresAt
+    lastFoundUsers
   }
 `

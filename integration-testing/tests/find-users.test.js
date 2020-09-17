@@ -1,3 +1,4 @@
+const moment = require('moment')
 const cognito = require('../utils/cognito')
 const misc = require('../utils/misc')
 const {queries, mutations} = require('../schema')
@@ -16,7 +17,7 @@ beforeAll(async () => {
 beforeEach(async () => await loginCache.clean())
 afterAll(async () => await loginCache.reset())
 
-/* test('Find users by email & phoneNumber too many', async () => {
+test('Find users by email & phoneNumber too many', async () => {
   const {client, email} = await loginCache.getCleanLogin()
   const emails = Array(101).fill(email)
 
@@ -194,7 +195,7 @@ test('Find Users sends cards to the users that were found', async () => {
     expect(self.userId).toBe(other2UserId)
     expect(self.cards.items[0].cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${otherUserId}`)
   })
-})*/
+})
 
 test('Find users and check lastFoundUsers', async () => {
   const {
@@ -202,21 +203,33 @@ test('Find users and check lastFoundUsers', async () => {
     userId: ourUserId,
     email: ourEmail,
     username: ourUsername,
-  } = await cognito.getAppSyncLogin()
+  } = await loginCache.getCleanLogin()
 
-  const {userId: other1UserId, email: other1Email, username: other1Username} = await cognito.getAppSyncLogin()
-  const {userId: other2UserId, email: other2Email, username: other2Username} = await cognito.getAppSyncLogin()
+  const {userId: other1UserId, email: other1Email, username: other1Username} = await loginCache.getCleanLogin()
+  const {userId: other2UserId, email: other2Email, username: other2Username} = await loginCache.getCleanLogin()
   const cmp = (a, b) => (a.userId < b.userId ? 1 : -1)
 
   // how each user will appear in search results, based on our query
   const us = {__typename: 'User', userId: ourUserId, username: ourUsername}
   const other1 = {__typename: 'User', userId: other1UserId, username: other1Username}
   const other2 = {__typename: 'User', userId: other2UserId, username: other2Username}
-  
-  // find multiple users
-  await misc.sleep(2000)
+
+  // Check initialize of lastFoundUsers
+  await ourClient.query({query: queries.self}).then(({data: {self}}) => {
+    expect(self.lastFoundUsers).toBeNull()
+  })
+
+  // Run the findUsers Query
+  let before = moment().toISOString()
   await ourClient
     .query({query: queries.findUsers, variables: {emails: [ourEmail, other1Email, other2Email]}})
     .then(({data: {findUsers}}) => expect(findUsers.items.sort(cmp)).toEqual([us, other1, other2].sort(cmp)))
-})
+  let after = moment().toISOString()
 
+  // Then check lastFoundUsers timestamp
+  await misc.sleep(2000)
+  await ourClient.query({query: queries.self}).then(({data: {self}}) => {
+    expect(before <= self.lastFoundUsers).toBe(true)
+    expect(after >= self.lastFoundUsers).toBe(true)
+  })
+})
