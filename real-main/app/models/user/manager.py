@@ -469,35 +469,17 @@ class UserManager(TrendingManagerMixin, ManagerBase):
         emails = set(emails) if emails else []
         phones = set(phones) if phones else []
 
-        # Get Batch Emails
-        batch_items_with_email = self.email_dynamo.batch_get_user_ids(emails)
+        user_ids_from_emails = self.email_dynamo.batch_get_user_ids(emails)
+        user_ids_from_phones = self.phone_number_dynamo.batch_get_user_ids(phones)
+        user_ids = set(user_ids_from_emails + user_ids_from_phones)
 
-        # Get Batch Phones
-        batch_items_with_phone = self.phone_number_dynamo.batch_get_user_ids(phones)
-
-        # Get Merged&Unique UserIdList
-        user_id_merged_list = set(batch_items_with_email + batch_items_with_phone)
-
-        # Sort the user_ids
-        users_ids = sorted(user_id_merged_list)
-
-        caller_userid = caller_user.item['userId']
-        caller_username = caller_user.item['username']
         # Each UserId
-        for user_follower_id in users_ids:
-            # if not following
-            if (
-                self.follower_manager.get_follow_status(user_follower_id, caller_userid)
-                == FollowStatus.NOT_FOLLOWING
-            ):
-                card_template = FindFollowsCardTemplate(
-                    user_id=user_follower_id,
-                    user_id_joined=caller_userid,
-                    username_joined=caller_username,
-                )
-                self.card_manager.add_or_update_card(card_template)
+        for user_id in user_ids:
+            follow_status = self.follower_manager.get_follow_status(user_id, caller_user.id)
+            if follow_status == FollowStatus.NOT_FOLLOWING:
+                card_template = FindFollowsCardTemplate(user_id, caller_user.id, caller_user.username)
 
-        return users_ids
+        return user_ids
 
     def on_appstore_sub_status_change_update_subscription(self, original_transaction_id, new_item, old_item=None):
         if new_item['status'] == AppStoreSubscriptionStatus.ACTIVE:

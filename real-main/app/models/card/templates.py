@@ -157,7 +157,7 @@ class FindFollowsCardTemplate(CardTemplate):
     def __init__(self, user_id, user_id_joined, username_joined):
         super().__init__(user_id)
         self.card_id = self.get_card_id(user_id, user_id_joined)
-        self.action = f'https://real.app/user/{user_id_joined}/'
+        self.action = f'https://real.app/user/{user_id_joined}'
         self.title = f'{username_joined} joined REAL'
 
 

@@ -19,7 +19,6 @@ afterAll(async () => await loginCache.reset())
 test('Find users by email & phoneNumber too many', async () => {
   const {client, email} = await loginCache.getCleanLogin()
   const emails = Array(101).fill(email)
-
   await misc.sleep(2000)
   await expect(client.query({query: queries.findUsers, variables: {emails}})).rejects.toThrow(
     /Cannot submit more than 100 combined emails and phoneNumbers/,
@@ -28,7 +27,6 @@ test('Find users by email & phoneNumber too many', async () => {
 
 test('Find users can handle duplicate emails', async () => {
   const {client, userId, email, username} = await loginCache.getCleanLogin()
-
   await misc.sleep(2000)
   await client
     .query({query: queries.findUsers, variables: {emails: [email, email]}})
@@ -46,10 +44,9 @@ test('Find users by email', async () => {
     email: ourEmail,
     username: ourUsername,
   } = await loginCache.getCleanLogin()
-
   const {userId: other1UserId, email: other1Email, username: other1Username} = await loginCache.getCleanLogin()
   const {userId: other2UserId, email: other2Email, username: other2Username} = await loginCache.getCleanLogin()
-  const cmp = (a, b) => (a.userId < b.userId ? 1 : -1)
+  const cmp = (a, b) => a.userId.localeCompare(b.userId)
 
   // how each user will appear in search results, based on our query
   const us = {__typename: 'User', userId: ourUserId, username: ourUsername}
@@ -57,6 +54,7 @@ test('Find users by email', async () => {
   const other2 = {__typename: 'User', userId: other2UserId, username: other2Username}
 
   // find no users
+  await misc.sleep(2000)
   await expect(ourClient.query({query: queries.findUsers})).rejects.toThrow(
     /Called without any arguments... probably not what you intended?/,
   )
@@ -90,7 +88,7 @@ test('Find users by phone, and by phone and email', async () => {
   const {userId: theirUserId, email: theirEmail, username: theirUsername} = await cognito.getAppSyncLogin(
     theirPhone,
   )
-  const cmp = (a, b) => (a.userId < b.userId ? 1 : -1)
+  const cmp = (a, b) => a.userId.localeCompare(b.userId)
 
   // how each user will appear in search results, based on our query
   const us = {__typename: 'User', userId: ourUserId, username: ourUsername}
@@ -115,29 +113,21 @@ test('Find Users sends cards to the users that were found', async () => {
     email: ourEmail,
     username: ourUsername,
   } = await loginCache.getCleanLogin()
-
   const {client: otherClient, userId: otherUserId, email: otherEmail} = await loginCache.getCleanLogin()
-
   const {
     client: other1Client,
     userId: other1UserId,
     email: other1Email,
     username: other1Username,
   } = await loginCache.getCleanLogin()
-
   const {client: other2Client, userId: other2UserId, email: other2Email} = await loginCache.getCleanLogin()
-
   const randomEmail = `${uuidv4()}@real.app`
-
   const other1 = {__typename: 'User', userId: other1UserId, username: other1Username}
 
   // find One User
   await ourClient
     .query({query: queries.findUsers, variables: {emails: [other1Email, randomEmail]}})
-    .then(({data: {findUsers}}) => {
-      // check with findusers
-      expect(findUsers.items).toEqual([other1])
-    })
+    .then(({data: {findUsers}}) => expect(findUsers.items).toEqual([other1]))
 
   // check called user has card
   const cardId = await other1Client.query({query: queries.self}).then(({data: {self}}) => {
@@ -146,7 +136,7 @@ test('Find Users sends cards to the users that were found', async () => {
     expect(card.cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${ourUserId}`)
     expect(card.title).toBe(`${ourUsername} joined REAL`)
     expect(card.subTitle).toBeNull()
-    expect(card.action).toBe(`https://real.app/user/${ourUserId}/`)
+    expect(card.action).toBe(`https://real.app/user/${ourUserId}`)
     return card.cardId
   })
 
