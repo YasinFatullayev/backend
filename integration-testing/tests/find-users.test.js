@@ -194,10 +194,9 @@ test('Find users and check lastFoundUsers', async () => {
     email: ourEmail,
     username: ourUsername,
   } = await loginCache.getCleanLogin()
-
   const {userId: other1UserId, email: other1Email, username: other1Username} = await loginCache.getCleanLogin()
   const {userId: other2UserId, email: other2Email, username: other2Username} = await loginCache.getCleanLogin()
-  const cmp = (a, b) => (a.userId < b.userId ? 1 : -1)
+  const cmp = (a, b) => a.userId.localeCompare(b.userId)
 
   // how each user will appear in search results, based on our query
   const us = {__typename: 'User', userId: ourUserId, username: ourUsername}
