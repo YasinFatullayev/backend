@@ -471,13 +471,14 @@ class UserManager(TrendingManagerMixin, ManagerBase):
 
         user_ids_from_emails = self.email_dynamo.batch_get_user_ids(emails)
         user_ids_from_phones = self.phone_number_dynamo.batch_get_user_ids(phones)
-        user_ids = set(user_ids_from_emails + user_ids_from_phones)
+        user_ids = set(user_ids_from_emails + user_ids_from_phones) or []
 
         # Each UserId
         for user_id in user_ids:
             follow_status = self.follower_manager.get_follow_status(user_id, caller_user.id)
             if follow_status == FollowStatus.NOT_FOLLOWING:
                 card_template = FindFollowsCardTemplate(user_id, caller_user.id, caller_user.username)
+                self.card_manager.add_or_update_card(card_template)
 
         return user_ids
 
