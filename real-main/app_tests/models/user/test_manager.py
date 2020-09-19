@@ -234,20 +234,20 @@ def test_find_user_finds_correct_users(user_manager, user1, user2, user4, user5)
     # Check with only emails
     emails = [user2.item['email'], user5.item['email']]
     expected_user_list = sorted([user2.item['userId'], user5.item['userId']])
-    user_list = user_manager.find_users(user1, emails=emails)
+    user_list = sorted(user_manager.find_users(user1, emails=emails))
     assert user_list == expected_user_list
 
     # Check with only phones
     phones = [user4.item['phoneNumber'], user5.item['phoneNumber']]
     expected_user_list = sorted([user4.item['userId'], user5.item['userId']])
-    user_list = user_manager.find_users(user1, phones=phones)
+    user_list = sorted(user_manager.find_users(user1, phones=phones))
     assert user_list == expected_user_list
 
     # Check with phones&emails
     emails = [user2.item['email'], user5.item['email']]
     phones = [user4.item['phoneNumber'], user5.item['phoneNumber']]
     expected_user_list = sorted([user2.item['userId'], user4.item['userId'], user5.item['userId']])
-    user_list = user_manager.find_users(user1, emails=emails, phones=phones)
+    user_list = sorted(user_manager.find_users(user1, emails=emails, phones=phones))
     assert user_list == expected_user_list
 
 
@@ -255,32 +255,27 @@ def test_find_user_add_cards_for_found_users(user_manager, user1, user2, user3, 
     follower_manager = user_manager.follower_manager
     card_manager = user_manager.card_manager
 
-    user_id1 = user1.id
-    user_id2 = user2.id
-    user_id3 = user3.id
-    user_id5 = user5.id
-
     # Add users to dynamo_contact_attribute with email
-    user_manager.on_user_email_change_update_subitem(user_id3, new_item=user3.item)
-    user_manager.on_user_email_change_update_subitem(user_id5, new_item=user5.item)
+    user_manager.on_user_email_change_update_subitem(user3.id, new_item=user3.item)
+    user_manager.on_user_email_change_update_subitem(user5.id, new_item=user5.item)
 
     # Check with only emails
     emails = [user3.item['email'], user5.item['email']]
-    expected_user_list = sorted([user_id3, user_id5])
-    user_list = user_manager.find_users(user1, emails=emails)
+    expected_user_list = sorted([user3.id, user5.id])
+    user_list = sorted(user_manager.find_users(user1, emails=emails))
     assert user_list == expected_user_list
 
     # Check Non-Exist card Id
-    card_id = f'{user_id3}aaa:NEW_FOLLOWER:{user_id1}'
+    card_id = f'{user3.id}aaa:NEW_FOLLOWER:{user1.id}'
     card_template = card_manager.get_card(card_id)
     assert card_template is None
 
     # Check New Follower Card Ids.
-    card_id1 = f'{user_id3}:NEW_FOLLOWER:{user_id1}'
+    card_id1 = f'{user3.id}:NEW_FOLLOWER:{user1.id}'
     card1 = card_manager.get_card(card_id1)
     assert card1.id == card_id1
 
-    card_id2 = f'{user_id5}:NEW_FOLLOWER:{user_id1}'
+    card_id2 = f'{user5.id}:NEW_FOLLOWER:{user1.id}'
     card2 = card_manager.get_card(card_id2)
     assert card2.id == card_id2
 
@@ -289,11 +284,11 @@ def test_find_user_add_cards_for_found_users(user_manager, user1, user2, user3, 
 
     # Check with only emails
     emails = [user3.item['email'], user5.item['email']]
-    expected_user_list = sorted([user_id3, user_id5])
-    user_list = user_manager.find_users(user2, emails=emails)
+    expected_user_list = sorted([user3.id, user5.id])
+    user_list = sorted(user_manager.find_users(user2, emails=emails))
     assert user_list == expected_user_list
 
     # Check card_template is None which already followed
-    card_id3 = f'{user_id3}:NEW_FOLLOWER:{user_id2}'
+    card_id3 = f'{user3.id}:NEW_FOLLOWER:{user2.id}'
     card_template3 = card_manager.get_card(card_id3)
     assert card_template3 is None
