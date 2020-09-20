@@ -1377,9 +1377,3 @@ def find_users(caller_user, arguments, **kwargs):
 
     user_ids = user_manager.find_users(caller_user, emails=emails, phones=phones)
     return {'items': user_ids}
-    # user_info_list = []
-
-    # for userId in user_ids:
-    #     user_info = user_manager.get_user(userId)
-    #     user_info_list.append({'userId': user_info.item['userId'], 'username': user_info.item['username']})
-    # return {'items': user_info_list}
