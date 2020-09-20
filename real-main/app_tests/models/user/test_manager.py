@@ -233,21 +233,21 @@ def test_find_user_finds_correct_users(user_manager, user1, user2, user4, user5)
 
     # Check with only emails
     emails = [user2.item['email'], user5.item['email']]
-    expected_user_list = sorted([user2.item['userId'], user5.item['userId']])
-    user_list = sorted(user_manager.find_users(user1, emails=emails))
+    expected_user_list = ([user2.item['userId'], user5.item['userId']]).sort()
+    user_list = (user_manager.find_users(user1, emails=emails)).sort()
     assert user_list == expected_user_list
 
     # Check with only phones
     phones = [user4.item['phoneNumber'], user5.item['phoneNumber']]
-    expected_user_list = sorted([user4.item['userId'], user5.item['userId']])
-    user_list = sorted(user_manager.find_users(user1, phones=phones))
+    expected_user_list = ([user4.item['userId'], user5.item['userId']]).sort()
+    user_list = (user_manager.find_users(user1, phones=phones)).sort()
     assert user_list == expected_user_list
 
     # Check with phones&emails
     emails = [user2.item['email'], user5.item['email']]
     phones = [user4.item['phoneNumber'], user5.item['phoneNumber']]
-    expected_user_list = sorted([user2.item['userId'], user4.item['userId'], user5.item['userId']])
-    user_list = sorted(user_manager.find_users(user1, emails=emails, phones=phones))
+    expected_user_list = ([user2.item['userId'], user4.item['userId'], user5.item['userId']]).sort()
+    user_list = (user_manager.find_users(user1, emails=emails, phones=phones)).sort()
     assert user_list == expected_user_list
 
 
@@ -261,8 +261,8 @@ def test_find_user_add_cards_for_found_users(user_manager, user1, user2, user3, 
 
     # Check with only emails
     emails = [user3.item['email'], user5.item['email']]
-    expected_user_list = sorted([user3.id, user5.id])
-    user_list = sorted(user_manager.find_users(user1, emails=emails))
+    expected_user_list = ([user3.id, user5.id]).sort()
+    user_list = (user_manager.find_users(user1, emails=emails)).sort()
     assert user_list == expected_user_list
 
     # Check Non-Exist card Id
@@ -284,8 +284,8 @@ def test_find_user_add_cards_for_found_users(user_manager, user1, user2, user3, 
 
     # Check with only emails
     emails = [user3.item['email'], user5.item['email']]
-    expected_user_list = sorted([user3.id, user5.id])
-    user_list = sorted(user_manager.find_users(user2, emails=emails))
+    expected_user_list = ([user3.id, user5.id]).sort()
+    user_list = (user_manager.find_users(user2, emails=emails)).sort()
     assert user_list == expected_user_list
 
     # Check card_template is None which already followed

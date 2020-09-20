@@ -477,7 +477,7 @@ class UserManager(TrendingManagerMixin, ManagerBase):
 
         user_ids_from_emails = self.email_dynamo.batch_get_user_ids(emails)
         user_ids_from_phones = self.phone_number_dynamo.batch_get_user_ids(phones)
-        user_ids = set(user_ids_from_emails + user_ids_from_phones) or []
+        user_ids = list(set(user_ids_from_emails + user_ids_from_phones)) or []
 
         # Each UserId
         for user_id in user_ids:
