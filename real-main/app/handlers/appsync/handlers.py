@@ -1372,7 +1372,7 @@ def find_users(caller_user, arguments, **kwargs):
     if not emails and not phones:
         raise ClientException('Called without any arguments... probably not what you intended?')
 
-    if len(emails + phones) > 100:
+    if len(emails) + len(phones) > 100:
         raise ClientException('Cannot submit more than 100 combined emails and phoneNumbers')
 
     user_ids = user_manager.find_users(caller_user, emails=emails, phones=phones)
