@@ -466,6 +466,12 @@ class UserManager(TrendingManagerMixin, ManagerBase):
             self.cognito_client.delete_identity_pool_entry(user_id)
 
     def find_users(self, caller_user, emails=None, phones=None):
+        """
+        Given a list of emails and a list of phones, return a list of user_ids of users
+        in our system with those emails and phones.
+        For each returned user_id that is not already following the user that called this
+        method, create a card inviting them to follow.
+        """
         emails = set(emails) if emails else []
         phones = set(phones) if phones else []
 

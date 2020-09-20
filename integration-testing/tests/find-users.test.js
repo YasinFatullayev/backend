@@ -58,7 +58,6 @@ test('Find users by email', async () => {
   await expect(ourClient.query({query: queries.findUsers})).rejects.toThrow(
     /Called without any arguments... probably not what you intended?/,
   )
-  await misc.sleep(2000)
   await ourClient
     .query({query: queries.findUsers, variables: {emails: ['x' + ourEmail]}})
     .then(({data: {findUsers}}) => expect(findUsers.items).toEqual([]))
@@ -130,6 +129,7 @@ test('Find Users sends cards to the users that were found', async () => {
     .then(({data: {findUsers}}) => expect(findUsers.items).toEqual([other1]))
 
   // check called user has card
+  await misc.sleep(2000)
   const cardId = await other1Client.query({query: queries.self}).then(({data: {self}}) => {
     expect(self.userId).toBe(other1UserId)
     const card = self.cards.items[0]
