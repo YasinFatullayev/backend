@@ -818,13 +818,13 @@ def test_link_federated_login_anonymous_user(anonymous_user):
 
 
 def test_update_last_found_time(user):
-    # Check update_last_found_time with Specific Time
-    now = pendulum.now('utc')
-    user.update_last_found_time(now)
-    assert user.refresh_item().item['lastFoundUsers'] == now.to_iso8601_string()
-
     # Check update_last_found_time without Specific Time
     before = pendulum.now('utc')
     user.update_last_found_time()
     after = pendulum.now('utc')
     assert before < pendulum.parse(user.refresh_item().item['lastFoundUsers']) < after
+
+    # Check update_last_found_time with Specific Time
+    now = pendulum.now('utc')
+    user.update_last_found_time(now)
+    assert user.refresh_item().item['lastFoundUsers'] == now.to_iso8601_string()

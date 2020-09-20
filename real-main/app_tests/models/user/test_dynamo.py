@@ -797,7 +797,6 @@ def test_set_user_last_found_time(user_dynamo):
     username = 'my-username'
     now = pendulum.now('utc')
 
-    user_dynamo.add_user('other-id-1', 'noise-1', 'cog-noise-1')
     expected_base_item = user_dynamo.add_user(user_id, username)
     assert expected_base_item['userId'] == user_id
 
