@@ -134,7 +134,7 @@ test('Find Users sends cards to the users that were found', async () => {
   const cardId = await other1Client.query({query: queries.self}).then(({data: {self}}) => {
     expect(self.userId).toBe(other1UserId)
     const card = self.cards.items[0]
-    expect(card.cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${ourUserId}`)
+    expect(card.cardId).toBe(`${other1UserId}:CONTACT_JOINED:${ourUserId}`)
     expect(card.title).toBe(`${ourUsername} joined REAL`)
     expect(card.subTitle).toBeNull()
     expect(card.action).toBe(`https://real.app/user/${ourUserId}`)
@@ -158,12 +158,12 @@ test('Find Users sends cards to the users that were found', async () => {
   await misc.sleep(2000)
   await other1Client.query({query: queries.self}).then(({data: {self}}) => {
     expect(self.userId).toBe(other1UserId)
-    expect(self.cards.items[0].cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${ourUserId}`)
+    expect(self.cards.items[0].cardId).toBe(`${other1UserId}:CONTACT_JOINED:${ourUserId}`)
   })
   // check second called user has card
   await other2Client.query({query: queries.self}).then(({data: {self}}) => {
     expect(self.userId).toBe(other2UserId)
-    expect(self.cards.items[0].cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${ourUserId}`)
+    expect(self.cards.items[0].cardId).toBe(`${other2UserId}:CONTACT_JOINED:${ourUserId}`)
   })
 
   // find different Users with other new user
@@ -178,12 +178,12 @@ test('Find Users sends cards to the users that were found', async () => {
   await misc.sleep(2000)
   await other1Client.query({query: queries.self}).then(({data: {self}}) => {
     expect(self.userId).toBe(other1UserId)
-    expect(self.cards.items[0].cardId).toBe(`${other1UserId}:NEW_FOLLOWER:${otherUserId}`)
+    expect(self.cards.items[0].cardId).toBe(`${other1UserId}:CONTACT_JOINED:${otherUserId}`)
   })
   // check second called user has card
   await other2Client.query({query: queries.self}).then(({data: {self}}) => {
     expect(self.userId).toBe(other2UserId)
-    expect(self.cards.items[0].cardId).toBe(`${other2UserId}:NEW_FOLLOWER:${otherUserId}`)
+    expect(self.cards.items[0].cardId).toBe(`${other2UserId}:CONTACT_JOINED:${otherUserId}`)
   })
 })
 

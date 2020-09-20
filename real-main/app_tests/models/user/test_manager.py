@@ -6,6 +6,7 @@ from unittest import mock
 import pendulum
 import pytest
 
+from app.models.follower.enums import FollowStatus
 from app.utils import GqlNotificationType
 
 
@@ -220,75 +221,60 @@ def test_fire_gql_subscription_chats_with_unviewed_messages_count(user_manager):
 
 
 def test_find_user_finds_correct_users(user_manager, user1, user2, user4, user5):
-    # Add users to dynamo_contact_attribute with email
-    user_manager.on_user_email_change_update_subitem(user2.item['userId'], new_item=user2.item)
-    # Add users to dynamo_contact_attribute with phone
-    user_manager.on_user_phone_number_change_update_subitem(user4.item['userId'], new_item=user4.item)
-    # Add users to dynamo_contact_attribute with email&phone
-    user_manager.on_user_email_change_update_subitem(user5.item['userId'], new_item=user5.item)
-    user_manager.on_user_phone_number_change_update_subitem(user5.item['userId'], new_item=user5.item)
+    # Add contact attribute subitem for user2's email
+    user_manager.on_user_email_change_update_subitem(user2.id, new_item=user2.item)
+
+    # Add contact attribute subitem for user4's phone
+    user_manager.on_user_phone_number_change_update_subitem(user4.id, new_item=user4.item)
+
+    # Add contact attribute subitem for user5's phone & email
+    user_manager.on_user_email_change_update_subitem(user5.id, new_item=user5.item)
+    user_manager.on_user_phone_number_change_update_subitem(user5.id, new_item=user5.item)
 
     # Check with None
     assert user_manager.find_users(user1) == []
 
-    # Check with only emails
+    # Check with only email
     emails = [user2.item['email'], user5.item['email']]
-    expected_user_list = ([user2.item['userId'], user5.item['userId']]).sort()
-    user_list = (user_manager.find_users(user1, emails=emails)).sort()
-    assert user_list == expected_user_list
+    assert user_manager.find_users(user1, emails=emails).sort() == [user2.id, user5.id].sort()
 
-    # Check with only phones
+    # Check with only phone
     phones = [user4.item['phoneNumber'], user5.item['phoneNumber']]
-    expected_user_list = ([user4.item['userId'], user5.item['userId']]).sort()
-    user_list = (user_manager.find_users(user1, phones=phones)).sort()
-    assert user_list == expected_user_list
+    assert user_manager.find_users(user1, phones=phones).sort() == [user4.id, user5.id].sort()
 
-    # Check with phones&emails
+    # Check with phone & email
     emails = [user2.item['email'], user5.item['email']]
     phones = [user4.item['phoneNumber'], user5.item['phoneNumber']]
-    expected_user_list = ([user2.item['userId'], user4.item['userId'], user5.item['userId']]).sort()
-    user_list = (user_manager.find_users(user1, emails=emails, phones=phones)).sort()
-    assert user_list == expected_user_list
+    assert (
+        user_manager.find_users(user1, emails=emails, phones=phones).sort()
+        == [user2.id, user4.id, user5.id].sort()
+    )
 
 
-def test_find_user_add_cards_for_found_users(user_manager, user1, user2, user3, user5):
+def test_find_user_add_cards_for_found_users_not_following(user_manager, user1, user2, user3, user5):
     follower_manager = user_manager.follower_manager
     card_manager = user_manager.card_manager
 
-    # Add users to dynamo_contact_attribute with email
+    # Add contact attribute subitems for users emails
+    user_manager.on_user_email_change_update_subitem(user2.id, new_item=user2.item)
     user_manager.on_user_email_change_update_subitem(user3.id, new_item=user3.item)
     user_manager.on_user_email_change_update_subitem(user5.id, new_item=user5.item)
 
-    # Check with only emails
-    emails = [user3.item['email'], user5.item['email']]
-    expected_user_list = ([user3.id, user5.id]).sort()
-    user_list = (user_manager.find_users(user1, emails=emails)).sort()
-    assert user_list == expected_user_list
+    # verify user2, user3 and user5 don't have cards for user1 already
+    card_id2 = f'{user2.id}:CONTACT_JOINED:{user1.id}'
+    card_id3 = f'{user3.id}:CONTACT_JOINED:{user1.id}'
+    card_id5 = f'{user5.id}:CONTACT_JOINED:{user1.id}'
+    assert card_manager.get_card(card_id2) is None
+    assert card_manager.get_card(card_id3) is None
+    assert card_manager.get_card(card_id5) is None
 
-    # Check Non-Exist card Id
-    card_id = f'{user3.id}aaa:NEW_FOLLOWER:{user1.id}'
-    card_template = card_manager.get_card(card_id)
-    assert card_template is None
+    # set up user3 to follow user1
+    follower_manager.request_to_follow(user3, user1)
+    assert follower_manager.get_follow_status(user3.id, user1.id) == FollowStatus.FOLLOWING
 
-    # Check New Follower Card Ids.
-    card_id1 = f'{user3.id}:NEW_FOLLOWER:{user1.id}'
-    card1 = card_manager.get_card(card_id1)
-    assert card1.id == card_id1
-
-    card_id2 = f'{user5.id}:NEW_FOLLOWER:{user1.id}'
-    card2 = card_manager.get_card(card_id2)
-    assert card2.id == card_id2
-
-    # With already Followed
-    follower_manager.request_to_follow(user3, user2)
-
-    # Check with only emails
-    emails = [user3.item['email'], user5.item['email']]
-    expected_user_list = ([user3.id, user5.id]).sort()
-    user_list = (user_manager.find_users(user2, emails=emails)).sort()
-    assert user_list == expected_user_list
-
-    # Check card_template is None which already followed
-    card_id3 = f'{user3.id}:NEW_FOLLOWER:{user2.id}'
-    card_template3 = card_manager.get_card(card_id3)
-    assert card_template3 is None
+    # user1 finds all three users using their email, verify users that are not following get cards
+    emails = [user3.item['email'], user5.item['email'], user2.item['email']]
+    assert user_manager.find_users(user1, emails=emails).sort() == [user2.id, user3.id, user5.id].sort()
+    assert card_manager.get_card(card_id2)
+    assert card_manager.get_card(card_id3) is None
+    assert card_manager.get_card(card_id5)

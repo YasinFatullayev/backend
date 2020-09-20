@@ -10,7 +10,7 @@ from app import models
 from app.mixins.base import ManagerBase
 from app.mixins.trending.manager import TrendingManagerMixin
 from app.models.appstore.enums import AppStoreSubscriptionStatus
-from app.models.card.templates import FindFollowsCardTemplate
+from app.models.card.templates import ContactJoinedCardTemplate
 from app.models.follower.enums import FollowStatus
 from app.models.post.enums import PostStatus
 from app.utils import GqlNotificationType
@@ -472,18 +472,17 @@ class UserManager(TrendingManagerMixin, ManagerBase):
         For each returned user_id that is not already following the user that called this
         method, create a card inviting them to follow.
         """
-        emails = set(emails) if emails else []
-        phones = set(phones) if phones else []
+        emails = emails or []
+        phones = phones or []
 
         user_ids_from_emails = self.email_dynamo.batch_get_user_ids(emails)
         user_ids_from_phones = self.phone_number_dynamo.batch_get_user_ids(phones)
-        user_ids = list(set(user_ids_from_emails + user_ids_from_phones)) or []
+        user_ids = list(set(user_ids_from_emails + user_ids_from_phones))  # uniquify
 
-        # Each UserId
         for user_id in user_ids:
             follow_status = self.follower_manager.get_follow_status(user_id, caller_user.id)
             if follow_status == FollowStatus.NOT_FOLLOWING:
-                card_template = FindFollowsCardTemplate(user_id, caller_user.id, caller_user.username)
+                card_template = ContactJoinedCardTemplate(user_id, caller_user.id, caller_user.username)
                 self.card_manager.add_or_update_card(card_template)
 
         return user_ids

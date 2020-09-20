@@ -71,5 +71,9 @@ def test_bach_get_user_ids(uca_dynamo):
     assert uca_dynamo.batch_get_user_ids([str(uuid4()), attr_2]) == [user_id_2]
 
     # check batch get of two
-    assert uca_dynamo.batch_get_user_ids([attr_1, attr_2]) == [user_id_1, user_id_2]
-    assert uca_dynamo.batch_get_user_ids([attr_2, attr_1, str(uuid4())]) == [user_id_2, user_id_1]
+    assert uca_dynamo.batch_get_user_ids([attr_1, attr_2]).sort() == [user_id_1, user_id_2].sort()
+    assert uca_dynamo.batch_get_user_ids([attr_2, attr_1, str(uuid4())]).sort() == [user_id_2, user_id_1].sort()
+
+    # check can handle duplicates
+    assert uca_dynamo.batch_get_user_ids([attr_1, attr_1]) == [user_id_1]
+    assert uca_dynamo.batch_get_user_ids([attr_1, attr_2, attr_1]).sort() == [user_id_1, user_id_2].sort()
