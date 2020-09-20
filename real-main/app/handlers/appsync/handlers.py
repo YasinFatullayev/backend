@@ -1376,13 +1376,4 @@ def find_users(caller_user, arguments, **kwargs):
         raise ClientException('Cannot submit more than 100 combined emails and phoneNumbers')
 
     user_ids = user_manager.find_users(caller_user, emails=emails, phones=phones)
-    user_info_list = []
-
-    for userId in user_ids:
-        user_info = user_manager.get_user(userId)
-        user_info_list.append({'userId': user_info.item['userId'], 'username': user_info.item['username']})
-
-    # Update lastFoundUsers
-    now = pendulum.now('utc')
-    caller_user.update_last_found_time(now)
-    return {'items': user_info_list}
+    return {'items': user_ids}
