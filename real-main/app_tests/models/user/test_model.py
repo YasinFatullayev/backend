@@ -2,9 +2,11 @@ import logging
 from unittest.mock import Mock, call, patch
 from uuid import uuid4
 
+import botocore
 import pendulum
 import pytest
 
+from app.clients.cognito import InvalidEncryption
 from app.models.follower.enums import FollowStatus
 from app.models.user.enums import UserPrivacyStatus, UserStatus, UserSubscriptionLevel
 from app.models.user.exceptions import (
@@ -828,3 +830,21 @@ def test_update_last_found_time(user):
     now = pendulum.now('utc')
     user.update_last_found_time(now)
     assert user.refresh_item().item['lastFoundUsers'] == now.to_iso8601_string()
+
+
+def test_set_user_password_failures(user):
+    # it seems boto can raise multiple exceptions for invalid passwords
+    err = botocore.exceptions.ParamValidationError(report='foo')
+    with patch.object(user.cognito_client, 'set_user_password', side_effect=err):
+        with pytest.raises(UserValidationException, match='Invalid password'):
+            user.set_password('encryptedfoo')
+
+    err = user.cognito_client.user_pool_client.exceptions.InvalidPasswordException({}, 'bar')
+    with patch.object(user.cognito_client, 'set_user_password', side_effect=err):
+        with pytest.raises(UserValidationException, match='Invalid password'):
+            user.set_password('encryptedfoo')
+
+    err = InvalidEncryption()
+    with patch.object(user.cognito_client, 'set_user_password', side_effect=err):
+        with pytest.raises(UserException, match='Unable to decrypt'):
+            user.set_password('encryptedfoo')
